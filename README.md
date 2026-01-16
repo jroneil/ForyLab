@@ -46,6 +46,19 @@ Finished your benchmarks? Click **"Export CSV"** to download all raw benchmark d
 
 ---
 
+## 🗄️ Database Switching: MS SQL Server
+
+By default, the lab uses an in-memory **H2 Database**. To test against **MS SQL Server**:
+
+1.  **Configure**: Edit `src/main/resources/application-sqlserver.properties` with your SQL Server connection string and credentials.
+2.  **Run with Profile**: Use the `sqlserver` Spring profile:
+    ```powershell
+    mvn spring-boot:run -Dspring.profiles.active=sqlserver
+    ```
+    *Note: The application will automatically initialize the Spring Session tables in the target database on first run.*
+
+---
+
 ## 🔬 How to Run a Rigorous Test
 
 1.  **Prepare Environment**: Choose your **Object Size** (e.g., 500 KB) and toggle **Circular References**. Click **"Prepare Object"**.
