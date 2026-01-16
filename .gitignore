@@ -1,0 +1,32 @@
+# Target directory
+target/
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# IDE Specific
+.settings/
+.project
+.classpath
+.factorypath
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.antigravity/
+
+# Log files
+*.log
+
+# OS specific
+Thumbs.db
+.DS_Store
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
