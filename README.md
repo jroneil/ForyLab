@@ -109,14 +109,14 @@ The laboratory is designed to simulate high-pressure production environments. He
 
 ## 🗄️ Database Switching: MS SQL Server
 
-By default, the lab uses an in-memory **H2 Database**. To test against **MS SQL Server**:
+By default, the lab uses an in-memory **H2 Database** (via the `h2` profile). To test against **MS SQL Server**:
 
 1.  **Configure**: Edit `src/main/resources/application-sqlserver.properties` with your SQL Server connection string and credentials.
-2.  **Run with Profile**: Use the `sqlserver` Spring profile:
+2.  **Run with Profile**: Use the `sqlserver` Spring profile. Because of Windows PowerShell quoting rules, use the following exact command:
     ```powershell
-    mvn spring-boot:run -Dspring.profiles.active=sqlserver
+    mvn spring-boot:run "-Dspring-boot.run.profiles=sqlserver"
     ```
-    *Note: The application will automatically initialize the Spring Session tables in the target database on first run.*
+    *Note: If you are using a standard CMD prompt, you can omit the quotes.*
 
 ---
 
