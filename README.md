@@ -1,6 +1,8 @@
-# Serialization Lab: Spring Session + Apache Fory
+# Serialization Lab v2.0: Spring Session + Apache Fory
 
-This project is a performance benchmark laboratory designed to compare **Java Native Serialization** with **Apache Fory (formerly Apache Fury)** when used within a Spring Session (JDBC) environment.
+This project is a high-performance benchmark laboratory designed to compare **Java Native Serialization** with **Apache Fory (formerly Apache Fury)** in a Spring Session (JDBC) environment. 
+
+Version 2.0 introduces **JIT Warm-up cycles**, **Serialization (Write) benchmarking**, and **Real-time Visual Analytics**.
 
 ## 🚀 Getting Started
 
@@ -9,36 +11,50 @@ This project is a performance benchmark laboratory designed to compare **Java Na
 - Maven 3.6+
 
 ### 1. Build the Project
-Run the following command in the root directory to download dependencies and compile the code:
 ```powershell
 mvn clean compile
 ```
 
 ### 2. Run the Application
-Start the Spring Boot application:
 ```powershell
 mvn spring-boot:run
 ```
 
 ### 3. Access the Lab
-Open your browser and go to:
 [http://localhost:8080/compare](http://localhost:8080/compare)
 
 ---
 
-## 🔬 How to Test
+## 🎮 Dashboard Configuration
 
-1.  **Initialize Session**: Click **"Store in Session"**. This creates a complex `Quote` object (Insurance domain model), serializes it using both Java and Fory, and stores the resulting byte arrays in your HTTP Session (backed by H2 Database).
-2.  **Run Benchmarks**: 
-    - Click **"Bench Java"** to measure native deserialization speed.
-    - Click **"Bench Fory"** to measure Fory's optimized deserialization speed.
-    - Click **"Run Both"** for a side-by-side comparison.
-3.  **Adjust Payload**: Change the **Payload Size (KB)** to see how Fory handles larger, more complex object graphs compared to Java.
-4.  **Inspect Database**: Visit the H2 Console to see how the session data is stored:
-    - **URL**: [http://localhost:8080/h2-console](http://localhost:8080/h2-console)
-    - **JDBC URL**: `jdbc:h2:mem:testdb`
-    - **User**: `sa`, **Password**: (blank)
-    - **Query**: `SELECT * FROM SPRING_SESSION_ATTRIBUTES`
+The Laboratory UI allows you to tune the benchmark parameters to simulate production conditions:
+
+| Setting | Purpose | Why it matters |
+| :--- | :--- | :--- |
+| **Payload Size** | KB of data | Simulates simple vs. deep nested object graphs (Insurance Quotes). |
+| **Bench Type** | Read vs. Write | **Deserialize (Read)** tests session retrieval. **Serialize (Write)** tests session updates. |
+| **Iterations** | Number of tests | Higher numbers provide more statistically significant averages. |
+| **Warm-up Cycles**| JIT Preparation | Fory uses JIT optimization. Warm-ups allow the code to reach peak "hot" performance. |
+
+---
+
+## 📊 New in v2.0
+
+- **Visual Latency Charts**: Real-time bar graphs built with Chart.js to visualize the performance gap.
+- **Bi-Directional Testing**: You can now test both "Serialization" (Object to Bytes) and "Deserialization" (Bytes to Object).
+- **JIT Awareness**: Explicit warm-up controls to showcase how Fory gains speed as the JVM optimizes the execution path.
+
+---
+
+## 🔬 How to Run a Rigorous Test
+
+1.  **Prepare Environment**: Click **"Prepare Object"**. This generates the insurance quote and caches it in memory for the tests.
+2.  **Toggle Mode**: Choose **"Serialize (Write)"** to see how fast Fory encodes data compared to Java.
+3.  **Heat the JIT**: Set **Warm-up Cycles** to `1000`. This ensures you aren't measuring Fory while it is still "cold."
+4.  **Execute**: Click **"🔥 Run Comparison"**.
+5.  **Analyze**: 
+    - The **Chart** shows a side-by-side comparison of average latency.
+    - The **Recent Results** table tracks P95 (tail latency), which is critical for real-world application responsiveness.
 
 ---
 
@@ -47,15 +63,16 @@ Open your browser and go to:
 - `ForyConfig.java`: Configures the `ThreadSafeFory` bean for the application.
 - `QuoteCodec.java`: A wrapper around Fory to handle business object serialization.
 - `CompareApiController.java`: The REST back-end driving the benchmarks.
-- `compare.jsp`: The modern, interactive dashboard (Glassmorphism design).
+- `compare.jsp`: The modern dashboard featuring Chart.js and Glassmorphism design.
 
 ## 📝 Troubleshooting
 
-### "ThreadLocalFory cannot be resolved"
-This usually happens if the Maven dependencies aren't correctly synchronized. Ensure you have run `mvn clean install` and that your IDE is using the correct `pom.xml`.
+### "C:/Users/.../test" not found (H2 Console)
+The H2 console defaults to a file-based URL. Ensure you change the **JDBC URL** to:
+`jdbc:h2:mem:testdb`
 
-### "Function [:formatBytes] not found"
-This error occurs in JSP when client-side template literals (using `${}`) are mistaken for server-side Expression Language. We have escaped these as `\${}` to ensure they run in the browser.
+### "ThreadLocalFory cannot be resolved"
+Ensure you are using Fory version `0.14.1` or later in your `pom.xml`. Run `mvn clean install` to force a dependency refresh.
 
 ---
 *Built with ❤️ for performance-obsessed developers.*

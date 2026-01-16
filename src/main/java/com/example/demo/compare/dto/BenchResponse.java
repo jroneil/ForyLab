@@ -11,6 +11,8 @@ public class BenchResponse {
     private double minMs;
     private double maxMs;
     private int iterations;
+    private int warmup;
     private int payloadBytes;
     private String mode;
+    private String type;
 }

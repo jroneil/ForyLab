@@ -35,7 +35,7 @@
         }
 
         .container {
-            max-width: 1000px;
+            max-width: 1200px;
             margin: 0 auto;
         }
 
@@ -58,6 +58,12 @@
             font-size: 1.1rem;
         }
 
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
         .card {
             background: var(--card-bg);
             border-radius: 1rem;
@@ -69,7 +75,7 @@
 
         .controls {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 1.5rem;
             align-items: end;
         }
@@ -86,7 +92,8 @@
             font-size: 0.9rem;
         }
 
-        input {
+        input,
+        select {
             background: var(--bg);
             border: 1px solid var(--border);
             border-radius: 0.5rem;
@@ -208,7 +215,7 @@
             padding: 1rem;
             font-family: 'Consolas', 'Monaco', monospace;
             font-size: 0.85rem;
-            max-height: 300px;
+            max-height: 200px;
             overflow-y: auto;
             color: #10b981;
             margin-top: 1rem;
@@ -261,86 +268,153 @@
             color: var(--text-muted);
             font-size: 0.8rem;
         }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
     <div class="container">
         <header>
-            <h1>Serialization Lab</h1>
-            <p class="subtitle">Benchmarking Java Native vs Apache Fury (Fory) in Spring Session</p>
+            <h1>Serialization Lab v2.0</h1>
+            <p class="subtitle">Industrial Benchmark: Java Native vs Apache Fury (Fory) JIT</p>
         </header>
 
-        <section class="card">
-            <div class="controls">
-                <div class="form-group">
-                    <label for="sizeKb">Payload Size (KB)</label>
-                    <input type="number" id="sizeKb" value="100" min="1" max="5000">
-                </div>
-                <div class="form-group">
-                    <label for="iterations">Iterations</label>
-                    <input type="number" id="iterations" value="200" min="1" max="10000">
-                </div>
-            </div>
-            <div class="button-group">
-                <button id="btnStore" class="btn-primary">
-                    <span id="storeLoader" class="loader"></span>
-                    Store in Session
-                </button>
-                <button id="btnBenchJava" class="btn-java" disabled>Bench Java</button>
-                <button id="btnBenchFory" class="btn-fory" disabled>Bench Fory</button>
-                <button id="btnRunBoth" class="btn-outline" disabled>Run Both</button>
-            </div>
-        </section>
+        <div class="dashboard-grid">
+            <div class="left-col">
+                <section class="card">
+                    <h2>Configuration</h2>
+                    <div class="controls">
+                        <div class="form-group">
+                            <label for="sizeKb">Payload Size (KB)</label>
+                            <input type="number" id="sizeKb" value="500" min="1" max="5000">
+                        </div>
+                        <div class="form-group">
+                            <label for="benchType">Bench Type</label>
+                            <select id="benchType">
+                                <option value="deserialize">Deserialize (Read)</option>
+                                <option value="serialize">Serialize (Write)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="controls" style="margin-top: 1rem;">
+                        <div class="form-group">
+                            <label for="iterations">Iterations</label>
+                            <input type="number" id="iterations" value="500" min="1" max="10000">
+                        </div>
+                        <div class="form-group">
+                            <label for="warmup">Warm-up Cycles</label>
+                            <input type="number" id="warmup" value="1000" min="0" max="10000">
+                        </div>
+                    </div>
+                    <div class="button-group">
+                        <button id="btnStore" class="btn-primary">
+                            <span id="storeLoader" class="loader"></span>
+                            Prepare Object
+                        </button>
+                        <button id="btnRunBoth" class="btn-outline" disabled>🔥 Run Comparison</button>
+                    </div>
+                </section>
 
-        <div id="statusSection" style="display: none;">
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <span class="stat-label">Java Payload</span>
-                    <span id="javaSize" class="stat-value">0 B</span>
+                <div id="statusSection" style="display: none;">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <span class="stat-label">Java Payload</span>
+                            <span id="javaSize" class="stat-value">0 B</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-label">Fory Payload</span>
+                            <span id="forySize" class="stat-value">0 B</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="stat-card">
-                    <span class="stat-label">Fory Payload</span>
-                    <span id="forySize" class="stat-value">0 B</span>
-                </div>
+
+                <section class="card">
+                    <h2>Latency Distribution (ms)</h2>
+                    <div class="chart-container">
+                        <canvas id="performanceChart"></canvas>
+                    </div>
+                </section>
+            </div>
+
+            <div class="right-col">
+                <section class="card">
+                    <div class="status-header"
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom:1rem;">
+                        <h2>Recent Results</h2>
+                        <button class="btn-outline" onclick="clearResults()">Clear</button>
+                    </div>
+                    <div style="max-height: 500px; overflow-y: auto;">
+                        <table class="results-table">
+                            <thead>
+                                <tr>
+                                    <th>Mode</th>
+                                    <th>Type</th>
+                                    <th>Avg (ms)</th>
+                                    <th>P95 (ms)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="resultsBody">
+                                <!-- Results will be injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section class="card">
+                    <h2>Protocol Analytics</h2>
+                    <div id="jsonOutput" class="json-display">Initialize environment...</div>
+                </section>
             </div>
         </div>
-
-        <section class="card">
-            <div class="status-header">
-                <h2>Benchmark Results</h2>
-                <button class="btn-outline" onclick="clearResults()">Clear</button>
-            </div>
-            <table class="results-table">
-                <thead>
-                    <tr>
-                        <th>Mode</th>
-                        <th>Avg (ms)</th>
-                        <th>P95 (ms)</th>
-                        <th>Min/Max</th>
-                        <th>Payload</th>
-                    </tr>
-                </thead>
-                <tbody id="resultsBody">
-                    <!-- Results will be injected here -->
-                </tbody>
-            </table>
-        </section>
-
-        <section class="card">
-            <h2>Raw JSON Responses</h2>
-            <div id="jsonOutput" class="json-display">System ready. Initialize by storing a quote...</div>
-        </section>
     </div>
 
     <script>
         const btnStore = document.getElementById('btnStore');
-        const btnBenchJava = document.getElementById('btnBenchJava');
-        const btnBenchFory = document.getElementById('btnBenchFory');
         const btnRunBoth = document.getElementById('btnRunBoth');
         const jsonOutput = document.getElementById('jsonOutput');
         const resultsBody = document.getElementById('resultsBody');
         const storeLoader = document.getElementById('storeLoader');
+
+        let chart;
+
+        function initChart() {
+            const ctx = document.getElementById('performanceChart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Java Native', 'Apache Fory'],
+                    datasets: [{
+                        label: 'Average Latency (ms)',
+                        data: [0, 0],
+                        backgroundColor: ['rgba(245, 158, 11, 0.5)', 'rgba(6, 182, 212, 0.5)'],
+                        borderColor: ['#f59e0b', '#06b6d4'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: '#334155' } },
+                        x: { grid: { display: false } }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+
+        function updateChart(javaAvg, foryAvg) {
+            chart.data.datasets[0].data = [javaAvg, foryAvg];
+            chart.update();
+        }
 
         function updateJson(obj) {
             jsonOutput.innerText = JSON.stringify(obj, null, 2);
@@ -360,7 +434,7 @@
             btnStore.disabled = true;
 
             try {
-                const res = await fetch(`/api/compare/store?sizeKb=${sizeKb}`, { method: 'POST' });
+                const res = await fetch(`/api/compare/store?sizeKb=\${sizeKb}`, { method: 'POST' });
                 const data = await res.json();
                 updateJson(data);
 
@@ -368,8 +442,6 @@
                 document.getElementById('javaSize').innerText = formatBytes(data.javaBytesSize);
                 document.getElementById('forySize').innerText = formatBytes(data.foryBytesSize);
 
-                btnBenchJava.disabled = false;
-                btnBenchFory.disabled = false;
                 btnRunBoth.disabled = false;
             } catch (e) {
                 updateJson({ error: e.message });
@@ -381,10 +453,18 @@
 
         async function runBench(mode) {
             const iterations = document.getElementById('iterations').value;
+            const warmup = document.getElementById('warmup').value;
+            const type = document.getElementById('benchType').value;
+
             const res = await fetch('/api/compare/bench', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ iterations: parseInt(iterations), mode })
+                body: JSON.stringify({
+                    iterations: parseInt(iterations),
+                    warmup: parseInt(warmup),
+                    mode,
+                    type
+                })
             });
             const data = await res.json();
             addResultRow(data);
@@ -396,27 +476,33 @@
             const badgeClass = data.mode === 'java' ? 'badge-java' : 'badge-fory';
             row.innerHTML = `
                 <td><span class="mode-badge \${badgeClass}">\${data.mode}</span></td>
+                <td>\${data.type}</td>
                 <td><strong>\${data.avgMs.toFixed(3)}</strong></td>
                 <td>\${data.p95Ms.toFixed(3)}</td>
-                <td>\${data.minMs.toFixed(3)} / \${data.maxMs.toFixed(3)}</td>
-                <td>\${formatBytes(data.payloadBytes)}</td>
             `;
             resultsBody.prepend(row);
             updateJson(data);
         }
 
-        btnBenchJava.addEventListener('click', () => runBench('java'));
-        btnBenchFory.addEventListener('click', () => runBench('fory'));
         btnRunBoth.addEventListener('click', async () => {
             btnRunBoth.disabled = true;
-            await runBench('java');
-            await runBench('fory');
+            btnRunBoth.innerText = '🏃 Running Benchmarks...';
+
+            const javaData = await runBench('java');
+            const foryData = await runBench('fory');
+
+            updateChart(javaData.avgMs, foryData.avgMs);
+
             btnRunBoth.disabled = false;
+            btnRunBoth.innerText = '🔥 Run Comparison';
         });
 
         function clearResults() {
             resultsBody.innerHTML = '';
+            if (chart) updateChart(0, 0);
         }
+
+        initChart();
     </script>
 </body>
 

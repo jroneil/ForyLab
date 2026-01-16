@@ -22,6 +22,7 @@ public class CompareApiController {
 
     private static final String QUOTE_JAVA_BYTES = "QUOTE_JAVA_BYTES";
     private static final String QUOTE_FORY_BYTES = "QUOTE_FORY_BYTES";
+    private static final String QUOTE_OBJECT = "QUOTE_OBJECT";
 
     @Autowired
     private QuoteCodec quoteCodec;
@@ -35,6 +36,7 @@ public class CompareApiController {
 
         session.setAttribute(QUOTE_JAVA_BYTES, javaBytes);
         session.setAttribute(QUOTE_FORY_BYTES, foryBytes);
+        session.setAttribute(QUOTE_OBJECT, quote);
 
         return new StoreResponse(session.getId(), sizeKb, javaBytes.length, foryBytes.length);
     }
@@ -69,20 +71,48 @@ public class CompareApiController {
 
     @PostMapping("/bench")
     public BenchResponse bench(@RequestBody BenchRequest request, HttpSession session) throws Exception {
-        String attr = "java".equals(request.getMode()) ? QUOTE_JAVA_BYTES : QUOTE_FORY_BYTES;
-        byte[] data = (byte[]) session.getAttribute(attr);
-        if (data == null)
-            throw new RuntimeException("No data in session for mode: " + request.getMode());
+        String type = request.getType() != null ? request.getType() : "deserialize";
+        String mode = request.getMode();
 
+        Quote quote = (Quote) session.getAttribute(QUOTE_OBJECT);
+        byte[] data = (byte[]) session.getAttribute("java".equals(mode) ? QUOTE_JAVA_BYTES : QUOTE_FORY_BYTES);
+
+        if (quote == null || data == null) {
+            throw new RuntimeException("No data in session. Please 'Store' first.");
+        }
+
+        // Warmup phase
+        int warmup = request.getWarmup();
+        for (int i = 0; i < warmup; i++) {
+            if ("serialize".equals(type)) {
+                if ("java".equals(mode))
+                    JavaSer.serialize(quote);
+                else
+                    quoteCodec.serialize(quote);
+            } else {
+                if ("java".equals(mode))
+                    JavaSer.deserialize(data);
+                else
+                    quoteCodec.deserialize(data);
+            }
+        }
+
+        // Measurement phase
         List<Long> times = new ArrayList<>();
         int iterations = request.getIterations();
 
         for (int i = 0; i < iterations; i++) {
             long start = System.nanoTime();
-            if ("java".equals(request.getMode())) {
-                JavaSer.deserialize(data);
+            if ("serialize".equals(type)) {
+                if ("java".equals(mode))
+                    JavaSer.serialize(quote);
+                else
+                    quoteCodec.serialize(quote);
             } else {
-                quoteCodec.deserialize(data);
+                if ("java".equals(mode))
+                    JavaSer.deserialize(data);
+                else
+                    quoteCodec.deserialize(data);
             }
             times.add(System.nanoTime() - start);
         }
@@ -99,8 +129,10 @@ public class CompareApiController {
                 .maxMs(max)
                 .p95Ms(p95)
                 .iterations(iterations)
+                .warmup(warmup)
                 .payloadBytes(data.length)
-                .mode(request.getMode())
+                .mode(mode)
+                .type(type)
                 .build();
     }
 }
