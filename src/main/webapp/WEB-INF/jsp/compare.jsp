@@ -5,7 +5,7 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Serialization Lab v3.2 | Rigorous Performance Proof</title>
+        <title>Serialization Lab v4.0 | Rigorous Performance Proof</title>
         <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
         <style>
             :root {
@@ -263,8 +263,8 @@
     <body>
         <div class="container">
             <header>
-                <h1>Serialization Lab v3.2</h1>
-                <p class="subtitle">Rugorous Proof Benchmarking | JIT | Throughput | Payload Size</p>
+                <h1>Serialization Lab v4.0</h1>
+                <p class="subtitle">Rugorous Proof Benchmarking | JIT | JVM Impact | Payload Size</p>
             </header>
 
             <div class="dashboard-grid">
@@ -305,6 +305,8 @@
                                 Config</button>
                             <button id="btnExport" class="btn-outline" onclick="exportToCSV()" disabled>Export
                                 CSV</button>
+                            <button id="btnReport" class="btn-primary" onclick="generateReport()" disabled>📄 Generate
+                                Report</button>
                         </div>
                     </section>
 
@@ -386,7 +388,30 @@
                             </div>
                         </div>
                         <div id="jsonOutput" class="json-display">System ready...</div>
-                    </section>
+                        <section class="card">
+                            <h2>JVM Impact</h2>
+                            <table class="results-table">
+                                <thead>
+                                    <tr>
+                                        <th>Mode</th>
+                                        <th>Memory Δ</th>
+                                        <th>GC Count</th>
+                                        <th>GC Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="jvmImpactBody">
+                                    <tr>
+                                        <td colspan="4"
+                                            style="text-align: center; color: var(--text-muted); padding: 1.5rem;">
+                                            Run a comparison to populate...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <div id="jvmImpactSummary"
+                                style="margin-top: 1rem; font-size: 0.85rem; color: var(--text-muted); border-top: 1px solid var(--border); padding-top: 0.8rem; line-height: 1.4;">
+                            </div>
+                        </section>
                 </div>
             </div>
         </div>
@@ -396,8 +421,11 @@
             const btnRunBoth = document.getElementById('btnRunBoth');
             const btnReRun = document.getElementById('btnReRun');
             const btnExport = document.getElementById('btnExport');
+            const btnReport = document.getElementById('btnReport');
             const jsonOutput = document.getElementById('jsonOutput');
             const resultsBody = document.getElementById('resultsBody');
+            const jvmImpactBody = document.getElementById('jvmImpactBody');
+            const jvmImpactSummary = document.getElementById('jvmImpactSummary');
             const storeLoader = document.getElementById('storeLoader');
 
             let perfChart, sizeChart, histChart;
@@ -607,11 +635,76 @@
                     raw: { java, fory }
                 }, null, 2);
 
+                // --- JVM Impact "Winner" and Summary Logic ---
+                // Winner is determined by lowest memory delta, then lowest GC time.
+                let winner = null;
+                if (java.memoryDeltaBytes < fory.memoryDeltaBytes) {
+                    winner = 'java';
+                } else if (fory.memoryDeltaBytes < java.memoryDeltaBytes) {
+                    winner = 'fory';
+                } else {
+                    // Tie on memory, check GC time
+                    if (java.gcTimeMsDelta < fory.gcTimeMsDelta) winner = 'java';
+                    else if (fory.gcTimeMsDelta < java.gcTimeMsDelta) winner = 'fory';
+                }
+
+                const winnerBadge = '<span style="color: var(--success); font-weight: 600; font-size: 0.75rem; margin-left: 0.5rem;">✅ Lower JVM impact</span>';
+
+                jvmImpactBody.innerHTML = `
+                    <tr>
+                        <td>
+                            <span class="mode-badge badge-java">Java</span>
+                            \${winner === 'java' ? winnerBadge : ''}
+                        </td>
+                        <td>\${formatBytes(java.memoryDeltaBytes)}</td>
+                        <td>\${java.gcCollectionsDelta || 0}</td>
+                        <td>\${java.gcTimeMsDelta || 0} ms</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <span class="mode-badge badge-fory">Fory</span>
+                            \${winner === 'fory' ? winnerBadge : ''}
+                        </td>
+                        <td>\${formatBytes(fory.memoryDeltaBytes)}</td>
+                        <td>\${fory.gcCollectionsDelta || 0}</td>
+                        <td>\${fory.gcTimeMsDelta || 0} ms</td>
+                    </tr>
+                `;
+
+                // Generate Summary Sentence
+                let summary = "";
+                const memRatio = java.memoryDeltaBytes / Math.max(fory.memoryDeltaBytes, 1);
+
+                if (fory.memoryDeltaBytes < java.memoryDeltaBytes) {
+                    summary = `Apache Fory reduced heap allocation by <strong>\${memRatio.toFixed(1)}x</strong> `;
+                    if (fory.gcCollectionsDelta === 0 && java.gcCollectionsDelta > 0) {
+                        summary += "and avoided GC activity.";
+                    } else if (fory.gcCollectionsDelta < java.gcCollectionsDelta) {
+                        summary += "with less GC pressure.";
+                    } else {
+                        summary += ".";
+                    }
+                } else if (java.memoryDeltaBytes < fory.memoryDeltaBytes) {
+                    summary = "Java native serialization utilized less heap memory in this specific scenario.";
+                } else {
+                    summary = "Both protocols showed identical heap impact.";
+                }
+
+                // Correlation Insight
+                if (java.gcCollectionsDelta > 0 && java.p95Ms > java.avgMs * 1.5) {
+                    summary += " <br/><em>Note: Increased GC activity in Java coincides with higher p95 tail latency.</em>";
+                } else if (fory.gcCollectionsDelta > 0 && fory.p95Ms > fory.avgMs * 1.5) {
+                    summary += " <br/><em>Note: Increased GC activity in Fory coincides with higher p95 tail latency.</em>";
+                }
+
+                jvmImpactSummary.innerHTML = summary;
+
 
                 lastBenchmarks.push(java, fory);
                 btnRunBoth.disabled = false;
                 btnRunBoth.innerText = 'Run Comparison';
                 btnReRun.disabled = false;
+                btnReport.disabled = false;
             });
 
             async function reRun() {
@@ -679,8 +772,11 @@
 
             function clearResults() {
                 resultsBody.innerHTML = '';
+                jvmImpactBody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Run a comparison to populate...</td></tr>';
+                jvmImpactSummary.innerHTML = '';
                 lastBenchmarks = [];
                 btnReRun.disabled = true;
+                btnReport.disabled = true;
 
                 document.getElementById('circularRefs').disabled = false;
                 // optional (recommended):
@@ -697,6 +793,162 @@
                 histChart.update();
             }
 
+
+            function downloadTextFile(filename, content, mimeType) {
+                const blob = new Blob([content], { type: mimeType });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            }
+
+            function generateReport() {
+                if (lastBenchmarks.length < 2) return;
+
+                const java = lastBenchmarks[lastBenchmarks.length - 2];
+                const fory = lastBenchmarks[lastBenchmarks.length - 1];
+
+                const sizeKb = document.getElementById('sizeKb').value;
+                const circular = document.getElementById('circularRefs').checked;
+                const iterations = document.getElementById('iterations').value;
+                const warmup = document.getElementById('warmup').value;
+                const op = document.getElementById('benchType').value;
+
+                const timestamp = new Date().toLocaleString();
+                const fileTimestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+
+                const speedup = (java.avgMs / fory.avgMs).toFixed(2);
+                const p95Speedup = ((java.p95Ms || java.avgMs) / (fory.p95Ms || fory.avgMs)).toFixed(2);
+                const payloadRatio = (java.payloadBytes / fory.payloadBytes).toFixed(2);
+
+                // Winner logic (matching UI)
+                let winner = "Tie";
+                if (java.memoryDeltaBytes < fory.memoryDeltaBytes) winner = "Java";
+                else if (fory.memoryDeltaBytes < java.memoryDeltaBytes) winner = "Apache Fory";
+                else {
+                    if (java.gcTimeMsDelta < fory.gcTimeMsDelta) winner = "Java";
+                    else if (fory.gcTimeMsDelta < java.gcTimeMsDelta) winner = "Apache Fory";
+                }
+
+                const reportObj = {
+                    version: "v4.0",
+                    timestamp,
+                    config: { sizeKb, circular, iterations, warmup, operation: op },
+                    summary: {
+                        avgSpeedup: speedup + "x",
+                        p95Speedup: p95Speedup + "x",
+                        payloadSizeReduction: payloadRatio + "x",
+                        jvmImpactWinner: winner
+                    },
+                    stats: { java, fory }
+                };
+
+                // 1. JSON Report
+                downloadTextFile(`benchmark_report_\${fileTimestamp}.json`, JSON.stringify(reportObj, null, 2), 'application/json');
+
+                // 2. HTML Report
+                const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Benchmark Report - \${timestamp}</title>
+    <style>
+        body { font-family: sans-serif; color: #333; line-height: 1.6; padding: 40px; max-width: 900px; margin: auto; }
+        .header { border-bottom: 2px solid #6366f1; padding-bottom: 20px; margin-bottom: 30px; }
+        .hint { background: #f1f5f9; padding: 10px; border-radius: 5px; font-size: 0.9rem; margin-bottom: 20px; }
+        h1 { margin: 0; color: #1e293b; }
+        h2 { border-left: 4px solid #6366f1; padding-left: 10px; margin-top: 30px; color: #1e293b; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { border: 1px solid #e2e8f0; padding: 12px; text-align: left; }
+        th { background: #f8fafc; font-weight: 600; }
+        .winner { color: #16a34a; font-weight: bold; }
+        .speedup { font-size: 1.2rem; color: #6366f1; font-weight: bold; }
+        .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .summary-item { background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; }
+    </style>
+</head>
+<body>
+    <div class="hint">💡 <strong>Pro Tip:</strong> Use Browser <strong>Print (Ctrl+P)</strong> &rarr; <strong>Save as PDF</strong> to share this report.</div>
+    
+    <div class="header">
+        <h1>Serialization Lab Performance Report</h1>
+        <p>Generated on: \${timestamp} | Lab Version: v4.0</p>
+    </div>
+
+    <h2>Test Configuration</h2>
+    <table>
+        <tr><th>Object Size</th><td>\${sizeKb} KB</td><th>Circular Refs</th><td>\${circular ? 'Yes' : 'No'}</td></tr>
+        <tr><th>Operation</th><td>\${op}</td><th>Iterations</th><td>\${iterations}</td></tr>
+        <tr><th>Warm-up Cycles</th><td>\${warmup}</td><th>-</th><td>-</td></tr>
+    </table>
+
+    <h2>Executive Summary</h2>
+    <div class="summary-grid">
+        <div class="summary-item">
+            <div>Avg Speedup</div>
+            <div class="speedup">\${speedup}x Faster</div>
+        </div>
+        <div class="summary-item">
+            <div>Payload Reduction</div>
+            <div class="speedup">\${payloadRatio}x Smaller</div>
+        </div>
+        <div class="summary-item">
+            <div>JVM Impact Winner</div>
+            <div class="winner">\${winner}</div>
+        </div>
+        <div class="summary-item">
+            <div>P95 Tail Speedup</div>
+            <div class="speedup">\${p95Speedup}x</div>
+        </div>
+    </div>
+
+    <h2>Latency Metrics (ms)</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Mode</th><th>Avg</th><th>P50</th><th>P95</th><th>P99</th><th>StdDev</th><th>Throughput (ops/s)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Java Native</td><td>\${java.avgMs.toFixed(3)}</td><td>\${(java.p50Ms || 0).toFixed(3)}</td><td>\${(java.p95Ms || 0).toFixed(3)}</td><td>\${(java.p99Ms || 0).toFixed(3)}</td><td>\${(java.stddevMs || 0).toFixed(3)}</td><td>\${Math.round(java.throughput).toLocaleString()}</td>
+            </tr>
+            <tr>
+                <td>Apache Fory</td><td>\${fory.avgMs.toFixed(3)}</td><td>\${(fory.p50Ms || 0).toFixed(3)}</td><td>\${(fory.p95Ms || 0).toFixed(3)}</td><td>\${(fory.p99Ms || 0).toFixed(3)}</td><td>\${(fory.stddevMs || 0).toFixed(3)}</td><td>\${Math.round(fory.throughput).toLocaleString()}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>JVM Impact & Efficiency</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Mode</th><th>Payload Size</th><th>Memory Δ</th><th>GC Collections</th><th>GC Time</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Java Native</td><td>\${formatBytes(java.payloadBytes)}</td><td>\${formatBytes(java.memoryDeltaBytes)}</td><td>\${java.gcCollectionsDelta || 0}</td><td>\${java.gcTimeMsDelta || 0} ms</td>
+            </tr>
+            <tr>
+                <td>Apache Fory</td><td>\${formatBytes(fory.payloadBytes)}</td><td>\${formatBytes(fory.memoryDeltaBytes)}</td><td>\${fory.gcCollectionsDelta || 0}</td><td>\${fory.gcTimeMsDelta || 0} ms</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <p style="margin-top: 50px; font-size: 0.8rem; color: #94a3b8; text-align: center;">
+        Built for performance-obsessed engineers. Generated by Serialization Lab v4.0.
+    </p>
+</body>
+</html>`;
+
+                downloadTextFile(`benchmark_report_\${fileTimestamp}.html`, htmlContent, 'text/html');
+            }
 
             initCharts();
         </script>

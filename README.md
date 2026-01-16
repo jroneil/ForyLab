@@ -1,10 +1,10 @@
-# Serialization Lab v3.2: Rigorous Performance Proof
+# Serialization Lab v4.0: Rigorous Performance Proof
 
-![Serialization Lab v3.2 Dashboard](lab3.2.png)
+![Serialization Lab v4.0 Dashboard](lab3.2.png)
 
 This project is a high-performance benchmark laboratory designed to compare **Java Native Serialization** with **Apache Fory (formerly Apache Fury)** in a Spring Session (JDBC) environment. 
 
-Version 3.2 is the most comprehensive release, providing deep JVM observability and advanced statistical analysis to prove the benefits of modern serialization.
+Version 4.0 introduces professional reporting, allowing engineers to generate shareable HTML and JSON performance artifacts with a single click.
 
 ---
 
@@ -29,13 +29,13 @@ mvn spring-boot:run
 
 ---
 
-## 🎮 Rigorous Proof Features (v3.2)
+## 🎮 Rigorous Proof Features (v4.0)
 
-The laboratory now includes seven critical areas of proof:
+The laboratory now includes nine critical areas of proof:
 
-### 1. JVM Impact Analysis (NEW v3.2)
-Capture hard evidence of system overhead beyond just latency. The **Protocol Analysis** window now surfaces:
-- **Memory Delta**: Absolute heap usage change during the test.
+### 1. JVM Impact Card (NEW v3.3)
+A dedicated UI visualization for system overhead. The dashboard now features a real-time table summarizing:
+- **Memory Δ**: Absolute heap usage change during the test.
 - **GC Collections**: Number of garbage collection events triggered.
 - **GC Time**: Total JVM pause time spent in garbage collection.
 
@@ -52,13 +52,22 @@ Fory produces significantly smaller byte arrays than Java. Smaller payloads redu
 Measure how many operations the system can handle per second. This illustrates the scalability benefits for high-traffic environments.
 
 ### 5. Latency Histogram with Log Scale
-Visualize the distribution of samples. v3.2 adds a **Log scale toggle** to better inspect tail latency outliers when the performance gap is significant.
+Visualize the distribution of samples. v3.3 features a **Log scale toggle** to better inspect tail latency outliers when the performance gap is significant.
 
 ### 6. Circular Reference Test
 Prove robustness with complex domain models. Use the **"Circular References"** toggle to verify Fory's reference tracking (e.g., Parent -> Child -> Parent).
 
-### 7. Industrial Export (Enhanced)
+### 7. Industrial Export (CSV)
 Download a comprehensive **CSV Export** containing all 14 data points, including p-levels, throughput, memory deltas, and GC metrics for technical reports.
+
+### 8. One-Click Benchmark Report (NEW v4.0)
+Generate high-quality PDF-ready documentation for management and architects.
+- **Print-Friendly HTML**: A beautifully styled, single-page summary of the test.
+- **Structured JSON**: A full machine-readable data package including raw benchmark samples.
+- **Executive Summary**: Automatically calculates speedups, payload ratios, and identifies the JVM efficiency winner.
+
+### 9. Smart Winner Highlighting
+The UI automatically identifies which protocol "won" the JVM efficiency test based on memory allocation and GC pressure.
 
 ---
 
