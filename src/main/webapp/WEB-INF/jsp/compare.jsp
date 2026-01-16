@@ -265,6 +265,10 @@
             <header>
                 <h1>Serialization Lab v4.2</h1>
                 <p class="subtitle">Rugorous Proof Benchmarking | JIT | JVM Impact | Payload Size</p>
+                <!-- Professional disclaimer: signals observational context without distracting from results -->
+                <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.4rem; opacity: 0.8;">
+                    Observed results under specific test conditions &mdash; not general performance claims.
+                </p>
             </header>
 
             <div class="dashboard-grid">
