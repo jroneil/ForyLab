@@ -144,6 +144,7 @@ public class CompareApiController {
                 .payloadBytes(data.length)
                 .mode(mode)
                 .type(type)
+                .circular(request.isCircular())
                 .samples(msSamples)
                 .build();
     }

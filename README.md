@@ -29,24 +29,24 @@ mvn spring-boot:run
 
 The laboratory now includes five critical areas of proof:
 
-### 1. 📦 Payload Size Analytics
+### 1. Payload Size Analytics
 Fory doesn't just run faster; it produces significantly smaller byte arrays. Smaller payloads reduce database storage costs and network bandwidth usage. The UI now features a **horizontal bar chart** comparing actual bytes stored.
 
-### 2. 📈 Throughput Mode (Ops/Sec)
+### 2. Throughput Mode (Ops/Sec)
 Beyond individual latency, we now measure **Throughput (Operations per Second)**. This illustrates how many more concurrent users a system can handle when switching to Fory.
 
-### 3. 📊 Latency Histogram
+### 3. Latency Histogram
 Averages can be misleading. The v3.0 dashboard provides a **line chart distribution** of your samples. This allows you to visualize "jitter" and see Fory's consistent high performance compared to Java's overhead.
 
-### 4. 🔄 Circular Reference Test
+### 4. Circular Reference Test
 Real-world objects are often circular (e.g., Parent -> Child -> Parent). Use the **"Circular References"** toggle to prove that Fory's reference tracking is as robust and production-ready as native Java serialization.
 
-### 5. 📥 Industrial Export
+### 5. Industrial Export
 Finished your benchmarks? Click **"Export CSV"** to download all raw benchmark data, including averages, throughput, and P95 metrics, for inclusion in technical reports or architectural reviews.
 
 ---
 
-## 🗄️ Database Switching: MS SQL Server
+## Database Switching: MS SQL Server
 
 By default, the lab uses an in-memory **H2 Database**. To test against **MS SQL Server**:
 
@@ -59,11 +59,11 @@ By default, the lab uses an in-memory **H2 Database**. To test against **MS SQL 
 
 ---
 
-## 🔬 How to Run a Rigorous Test
+## How to Run a Rigorous Test
 
 1.  **Prepare Environment**: Choose your **Object Size** (e.g., 500 KB) and toggle **Circular References**. Click **"Prepare Object"**.
 2.  **Heat the JIT**: Set **Warm-up Cycles** to `2000` and **Iterations** to `500`.
-3.  **Execute**: Click **"🔥 Run Comparison"**.
+3.  **Execute**: Click **"Run Comparison"**.
 4.  **Analyze**: 
     - Check the **Speedup** multiplier in the Protocol Analysis window.
     - View the **Histogram** to see Fory's tight latency distribution.
@@ -71,7 +71,7 @@ By default, the lab uses an in-memory **H2 Database**. To test against **MS SQL 
 
 ---
 
-## 🛠 Project Structure
+## Project Structure
 
 - `ForyConfig.java`: Configures the `ThreadSafeFory` bean (v0.14.1+).
 - `QuoteFactory.java`: Industrial domain model generator supporting circular graphs.
