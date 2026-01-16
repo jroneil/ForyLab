@@ -34,4 +34,5 @@ public class BenchResponse {
     private long memoryDeltaBytes;
     private long gcCollectionsDelta;
     private long gcTimeMsDelta;
+    private String objectType;
 }

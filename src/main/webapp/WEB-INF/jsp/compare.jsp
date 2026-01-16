@@ -5,7 +5,7 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Serialization Lab v4.0 | Rigorous Performance Proof</title>
+        <title>Serialization Lab v4.2 | Rigorous Performance Proof</title>
         <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
         <style>
             :root {
@@ -263,7 +263,7 @@
     <body>
         <div class="container">
             <header>
-                <h1>Serialization Lab v4.0</h1>
+                <h1>Serialization Lab v4.2</h1>
                 <p class="subtitle">Rugorous Proof Benchmarking | JIT | JVM Impact | Payload Size</p>
             </header>
 
@@ -272,6 +272,17 @@
                 <div class="sidebar">
                     <section class="card">
                         <h2>Configuration</h2>
+                        <div class="form-group">
+                            <label for="objectType">Test Object</label>
+                            <select id="objectType">
+                                <option value="quote">Quote (Standard Insurance)</option>
+                                <option value="policy">Insurance Policy (Nested/Deep)</option>
+                                <option value="collections">Collections Blob (Maps/Lists)</option>
+                            </select>
+                            <span id="defaultsHint"
+                                style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.2rem; display: block;">Recommended
+                                defaults applied.</span>
+                        </div>
                         <div class="form-group">
                             <label for="sizeKb">Object Size (KB)</label>
                             <input type="number" id="sizeKb" value="500" min="1" max="5000">
@@ -358,6 +369,7 @@
                                 <thead>
                                     <tr>
                                         <th>Mode</th>
+                                        <th>Object</th>
                                         <th>Type</th>
                                         <th>Size</th>
                                         <th>Circ?</th>
@@ -374,6 +386,14 @@
                                 <tbody id="resultsBody"></tbody>
                             </table>
                         </div>
+                    </section>
+
+                    <section class="card" id="summaryCard" style="display: none;">
+                        <h2>Object Summary</h2>
+                        <table class="results-table">
+                            <tbody id="summaryBody">
+                            </tbody>
+                        </table>
                     </section>
 
                     <section class="card">
@@ -426,7 +446,34 @@
             const resultsBody = document.getElementById('resultsBody');
             const jvmImpactBody = document.getElementById('jvmImpactBody');
             const jvmImpactSummary = document.getElementById('jvmImpactSummary');
+            const summaryCard = document.getElementById('summaryCard');
+            const summaryBody = document.getElementById('summaryBody');
             const storeLoader = document.getElementById('storeLoader');
+
+            const iterationsInput = document.getElementById('iterations');
+            const warmupInput = document.getElementById('warmup');
+            const objectTypeSelect = document.getElementById('objectType');
+            const defaultsHint = document.getElementById('defaultsHint');
+
+            let userEditedIter = false;
+            let userEditedWarmup = false;
+
+            const recommendations = {
+                quote: { iterations: 500, warmup: 1000 },
+                policy: { iterations: 300, warmup: 800 },
+                collections: { iterations: 700, warmup: 1200 }
+            };
+
+            iterationsInput.addEventListener('input', () => { userEditedIter = true; defaultsHint.innerText = 'Manual override applied.'; });
+            warmupInput.addEventListener('input', () => { userEditedWarmup = true; defaultsHint.innerText = 'Manual override applied.'; });
+
+            objectTypeSelect.addEventListener('change', () => {
+                const type = objectTypeSelect.value;
+                const rec = recommendations[type];
+                if (!userEditedIter) iterationsInput.value = rec.iterations;
+                if (!userEditedWarmup) warmupInput.value = rec.warmup;
+                if (!userEditedIter && !userEditedWarmup) defaultsHint.innerText = 'Recommended defaults applied.';
+            });
 
             let perfChart, sizeChart, histChart;
             let lastBenchmarks = [];
@@ -507,28 +554,39 @@
             btnStore.addEventListener('click', async () => {
                 const sizeKb = parseInt(document.getElementById('sizeKb').value, 10);
                 const circular = document.getElementById('circularRefs').checked;
+                const objectType = document.getElementById('objectType').value;
                 storeLoader.style.display = 'inline-block';
                 btnStore.disabled = true;
 
                 try {
-                    const res = await fetch(`/api/compare/store?sizeKb=\${sizeKb}&circular=\${circular}`, { method: 'POST' });
+                    const res = await fetch(`/api/compare/store?sizeKb=\${sizeKb}&circular=\${circular}&objectType=\${objectType}`, { method: 'POST' });
                     const data = await res.json();
 
                     document.getElementById('statusSection').style.display = 'block';
                     sizeChart.data.datasets[0].data = [data.javaBytesSize, data.foryBytesSize];
                     sizeChart.update();
 
+                    // Populate Summary Card
+                    summaryCard.style.display = 'block';
+                    let summaryHtml = `
+                        <tr><th>Object</th><td>\${data.objectType}</td></tr>
+                        <tr><th>Class</th><td>\${data.objectClass}</td></tr>
+                    `;
+                    for (const [key, val] of Object.entries(data.summary)) {
+                        summaryHtml += `<tr><th>\${key.charAt(0).toUpperCase() + key.slice(1)}</th><td>\${val}</td></tr>`;
+                    }
+                    summaryBody.innerHTML = summaryHtml;
+
                     jsonOutput.innerText = JSON.stringify({
                         status: "Object Prepared",
+                        object: { type: data.objectType, class: data.objectClass },
+                        summary: data.summary,
                         payloads: {
                             java: formatBytes(data.javaBytesSize),
                             fory: formatBytes(data.foryBytesSize)
                         },
                         ratio: `\${(data.javaBytesSize / data.foryBytesSize).toFixed(1)}x smaller`
                     }, null, 2);
-
-                    // ✅ LOCK circular setting after object creation
-                    document.getElementById('circularRefs').disabled = true;
 
                     btnRunBoth.disabled = false;
                     btnExport.disabled = false;
@@ -562,8 +620,11 @@
 
                 const row = document.createElement('tr');
                 const badgeClass = data.mode === 'java' ? 'badge-java' : 'badge-fory';
+                const objLabel = data.objectType ? data.objectType.charAt(0).toUpperCase() + data.objectType.slice(1) : 'Unknown';
+
                 row.innerHTML = `
                     <td><span class="mode-badge \${badgeClass}">\${data.mode}</span></td>
+                    <td style="font-size: 0.75rem; color: var(--text-muted)">\${objLabel}</td>
                     <td>\${data.type === 'serialize' ? 'Write' : 'Read'}</td>
                     <td>\${formatBytes(data.payloadBytes)}</td>
                     <td>\${data.circular ? 'Yes' : 'No'}</td>
@@ -603,6 +664,7 @@
                 const iterations = parseInt(document.getElementById('iterations').value, 10);
                 const warmup = parseInt(document.getElementById('warmup').value, 10);
                 const op = document.getElementById('benchType').value;
+                const objectType = document.getElementById('objectType').value;
 
                 function pickStats(b) {
                     return {
@@ -623,7 +685,7 @@
 
                 jsonOutput.innerText = JSON.stringify({
                     outcome: "Comparison Finished",
-                    config: { sizeKb, circular, iterations, warmup, operation: op },
+                    config: { objectType, sizeKb, circular, iterations, warmup, operation: op },
                     headline: {
                         avgSpeedup: `\${(java.avgMs / fory.avgMs).toFixed(2)}x`,
                         p95Speedup: `\${((java.p95Ms ?? java.avgMs) / (fory.p95Ms ?? fory.avgMs)).toFixed(2)}x`,
@@ -721,12 +783,13 @@
                 if (lastBenchmarks.length === 0) return;
 
                 let csv =
-                    "Mode,Operation,Object Size (Bytes),Circular Refs,Iterations,Warmup Cycles," +
+                    "Mode,Object Type,Operation,Object Size (Bytes),Circular Refs,Iterations,Warmup Cycles," +
                     "Avg Latency (ms),P50 (ms),P95 (ms),P99 (ms),StdDev (ms)," +
                     "Throughput (ops/s),Mem Delta (Bytes),GC Time (ms)\n";
 
                 lastBenchmarks.forEach(b => {
-                    csv += `\${b.mode},\${b.type},\${b.payloadBytes},\${b.circular},\${b.iterations},\${b.warmup},` +
+                    const objType = b.objectType || "Unknown";
+                    csv += `\${b.mode},\${objType},\${b.type},\${b.payloadBytes},\${b.circular},\${b.iterations},\${b.warmup},` +
                         `\${b.avgMs},\${b.p50Ms ?? ""},\${b.p95Ms ?? ""},\${b.p99Ms ?? ""},\${b.stddevMs ?? ""},` +
                         `\${Math.round(b.throughput)},\${b.memoryDeltaBytes},\${b.gcTimeMsDelta}\n`;
                 });
@@ -774,13 +837,14 @@
                 resultsBody.innerHTML = '';
                 jvmImpactBody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Run a comparison to populate...</td></tr>';
                 jvmImpactSummary.innerHTML = '';
+                summaryCard.style.display = 'none';
                 lastBenchmarks = [];
                 btnReRun.disabled = true;
                 btnReport.disabled = true;
 
                 document.getElementById('circularRefs').disabled = false;
-                // optional (recommended):
-                // document.getElementById('sizeKb').disabled = false;
+                document.getElementById('sizeKb').disabled = false;
+                document.getElementById('objectType').disabled = false;
 
                 if (perfChart) perfChart.data.datasets[0].data = [0, 0];
                 if (sizeChart) sizeChart.data.datasets[0].data = [0, 0];
@@ -818,6 +882,7 @@
                 const iterations = document.getElementById('iterations').value;
                 const warmup = document.getElementById('warmup').value;
                 const op = document.getElementById('benchType').value;
+                const objectType = document.getElementById('objectType').value;
 
                 const timestamp = new Date().toLocaleString();
                 const fileTimestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
@@ -836,9 +901,9 @@
                 }
 
                 const reportObj = {
-                    version: "v4.0",
+                    version: "v4.2",
                     timestamp,
-                    config: { sizeKb, circular, iterations, warmup, operation: op },
+                    config: { objectType, sizeKb, circular, iterations, warmup, operation: op },
                     summary: {
                         avgSpeedup: speedup + "x",
                         p95Speedup: p95Speedup + "x",
@@ -877,14 +942,14 @@
     
     <div class="header">
         <h1>Serialization Lab Performance Report</h1>
-        <p>Generated on: \${timestamp} | Lab Version: v4.0</p>
+        <p>Generated on: \${timestamp} | Lab Version: v4.2</p>
     </div>
 
     <h2>Test Configuration</h2>
     <table>
-        <tr><th>Object Size</th><td>\${sizeKb} KB</td><th>Circular Refs</th><td>\${circular ? 'Yes' : 'No'}</td></tr>
-        <tr><th>Operation</th><td>\${op}</td><th>Iterations</th><td>\${iterations}</td></tr>
-        <tr><th>Warm-up Cycles</th><td>\${warmup}</td><th>-</th><td>-</td></tr>
+        <tr><th>Object Type</th><td>\${objectType}</td><th>Object Size</th><td>\${sizeKb} KB</td></tr>
+        <tr><th>Operation</th><td>\${op}</td><th>Circular Refs</th><td>\${circular ? 'Yes' : 'No'}</td></tr>
+        <tr><th>Iterations</th><td>\${iterations}</td><th>Warm-up Cycles</th><td>\${warmup}</td></tr>
     </table>
 
     <h2>Executive Summary</h2>
@@ -942,7 +1007,7 @@
     </table>
 
     <p style="margin-top: 50px; font-size: 0.8rem; color: #94a3b8; text-align: center;">
-        Built for performance-obsessed engineers. Generated by Serialization Lab v4.0.
+        Built for performance-obsessed engineers. Generated by Serialization Lab v4.2.
     </p>
 </body>
 </html>`;

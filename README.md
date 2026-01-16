@@ -1,10 +1,10 @@
-# Serialization Lab v4.0: Rigorous Performance Proof
+# Serialization Lab v4.2: Rigorous Performance Proof
 
-![Serialization Lab v4.0 Dashboard](lab3.2.png)
+![Serialization Lab v4.2 Dashboard](lab.png)
 
 This project is a high-performance benchmark laboratory designed to compare **Java Native Serialization** with **Apache Fory (formerly Apache Fury)** in a Spring Session (JDBC) environment. 
 
-Version 4.0 introduces professional reporting, allowing engineers to generate shareable HTML and JSON performance artifacts with a single click.
+Version 4.1 introduces multi-object type support, allowing you to benchmark diverse data structures from simple quotes to deeply nested policies and map-heavy collections.
 
 ---
 
@@ -29,9 +29,9 @@ mvn spring-boot:run
 
 ---
 
-## 🎮 Rigorous Proof Features (v4.0)
+## 🎮 Rigorous Proof Features (v4.2)
 
-The laboratory now includes nine critical areas of proof:
+The laboratory now includes eleven critical areas of proof:
 
 ### 1. JVM Impact Card (NEW v3.3)
 A dedicated UI visualization for system overhead. The dashboard now features a real-time table summarizing:
@@ -68,6 +68,16 @@ Generate high-quality PDF-ready documentation for management and architects.
 
 ### 9. Smart Winner Highlighting
 The UI automatically identifies which protocol "won" the JVM efficiency test based on memory allocation and GC pressure.
+
+### 10. Multi-Object Type Benchmarking (v4.1)
+Choose between different object schemas to see how serialization scales:
+- **Quote**: Standard flat object with some lists.
+- **Insurance Policy**: Deeply nested structure with various primitives and collections.
+- **Collections Blob**: Map-heavy and list-heavy payload to test generic collection overhead.
+
+### 11. Recommended Defaults & Object Summary (NEW v4.2)
+- **Context-Aware Presets**: Automatically adjusts iterations and warmup cycles based on the selected object type.
+- **Lightweight Insights**: Provides a summary of object complexity (e.g., coverage counts, driver counts) immediately after preparation without dumping full data.
 
 ---
 

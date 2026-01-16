@@ -1,22 +1,19 @@
 package com.example.demo.compare.controller;
 
-import com.example.demo.compare.domain.Quote;
-import com.example.demo.compare.domain.QuoteFactory;
+import com.example.demo.compare.domain.*;
 import com.example.demo.compare.dto.BenchRequest;
 import com.example.demo.compare.dto.BenchResponse;
 import com.example.demo.compare.dto.LoadResponse;
 import com.example.demo.compare.dto.StoreResponse;
+import com.example.demo.compare.serialization.GenericForyCodec;
 import com.example.demo.compare.serialization.JavaSer;
-import com.example.demo.compare.serialization.QuoteCodec;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 @RestController
 @RequestMapping("/api/compare")
@@ -27,23 +24,52 @@ public class CompareApiController {
     private static final String QUOTE_OBJECT = "QUOTE_OBJECT";
 
     @Autowired
-    private QuoteCodec quoteCodec;
+    private GenericForyCodec genericForyCodec;
 
     @PostMapping("/store")
     public StoreResponse store(@RequestParam(defaultValue = "100") int sizeKb,
             @RequestParam(defaultValue = "false") boolean circular,
+            @RequestParam(defaultValue = "quote") String objectType,
             HttpSession session) throws Exception {
 
-        Quote quote = QuoteFactory.createLargeQuote(sizeKb, circular);
+        Object obj;
+        if ("policy".equalsIgnoreCase(objectType)) {
+            obj = PolicyFactory.createPolicy(sizeKb, circular);
+        } else if ("collections".equalsIgnoreCase(objectType)) {
+            obj = CollectionsFactory.createCollectionsBlob(sizeKb, circular);
+        } else {
+            obj = QuoteFactory.createLargeQuote(sizeKb, circular);
+        }
 
-        byte[] javaBytes = JavaSer.serialize(quote);
-        byte[] foryBytes = quoteCodec.serialize(quote);
+        byte[] javaBytes = JavaSer.serialize(obj);
+        byte[] foryBytes = genericForyCodec.serialize(obj);
 
         session.setAttribute(QUOTE_JAVA_BYTES, javaBytes);
         session.setAttribute(QUOTE_FORY_BYTES, foryBytes);
-        session.setAttribute(QUOTE_OBJECT, quote);
+        session.setAttribute(QUOTE_OBJECT, obj);
+        session.setAttribute("OBJECT_TYPE", objectType);
+        session.setAttribute("OBJECT_CLASS", obj.getClass().getSimpleName());
 
-        return new StoreResponse(session.getId(), sizeKb, javaBytes.length, foryBytes.length);
+        Map<String, Integer> summary = new HashMap<>();
+        if (obj instanceof Quote) {
+            Quote q = (Quote) obj;
+            summary.put("drivers", q.getDrivers().size());
+            summary.put("coverages", q.getCoverages().size());
+            summary.put("vehicles", q.getVehicles().size());
+        } else if (obj instanceof InsurancePolicy) {
+            InsurancePolicy p = (InsurancePolicy) obj;
+            summary.put("coverages", p.getCoverages().size());
+            summary.put("endorsements", p.getEndorsements().size());
+            summary.put("attributes", p.getAttributes().size());
+        } else if (obj instanceof CollectionsBlob) {
+            CollectionsBlob b = (CollectionsBlob) obj;
+            summary.put("items", b.getItems().size());
+            summary.put("map_entries", b.getMap().size());
+            summary.put("strings", b.getStrings().size());
+        }
+
+        return new StoreResponse(session.getId(), sizeKb, javaBytes.length, foryBytes.length, objectType,
+                obj.getClass().getSimpleName(), summary);
     }
 
     @GetMapping("/load/java")
@@ -53,11 +79,11 @@ public class CompareApiController {
             throw new RuntimeException("No Java bytes in session");
 
         long start = System.nanoTime();
-        Quote quote = (Quote) JavaSer.deserialize(data);
+        Object obj = JavaSer.deserialize(data);
         long end = System.nanoTime();
 
         long duration = end - start;
-        return new LoadResponse(quote, duration, nanosToMs(duration));
+        return new LoadResponse(obj, duration, nanosToMs(duration));
     }
 
     @GetMapping("/load/fory")
@@ -67,11 +93,11 @@ public class CompareApiController {
             throw new RuntimeException("No Fory bytes in session");
 
         long start = System.nanoTime();
-        Quote quote = quoteCodec.deserialize(data);
+        Object obj = genericForyCodec.deserialize(data);
         long end = System.nanoTime();
 
         long duration = end - start;
-        return new LoadResponse(quote, duration, nanosToMs(duration));
+        return new LoadResponse(obj, duration, nanosToMs(duration));
     }
 
     @PostMapping("/bench")
@@ -86,10 +112,10 @@ public class CompareApiController {
             throw new IllegalArgumentException("type must be 'serialize' or 'deserialize'");
         }
 
-        Quote quote = (Quote) session.getAttribute(QUOTE_OBJECT);
+        Object obj = session.getAttribute(QUOTE_OBJECT);
         byte[] storedData = (byte[]) session.getAttribute("java".equals(mode) ? QUOTE_JAVA_BYTES : QUOTE_FORY_BYTES);
 
-        if (quote == null || storedData == null) {
+        if (obj == null || storedData == null) {
             throw new RuntimeException("No data in session. Please 'Store' first.");
         }
 
@@ -100,15 +126,15 @@ public class CompareApiController {
         for (int i = 0; i < warmup; i++) {
             if ("serialize".equals(type)) {
                 if ("java".equals(mode)) {
-                    JavaSer.serialize(quote);
+                    JavaSer.serialize(obj);
                 } else {
-                    quoteCodec.serialize(quote);
+                    genericForyCodec.serialize(obj);
                 }
             } else {
                 if ("java".equals(mode)) {
                     JavaSer.deserialize(storedData);
                 } else {
-                    quoteCodec.deserialize(storedData);
+                    genericForyCodec.deserialize(storedData);
                 }
             }
         }
@@ -136,15 +162,15 @@ public class CompareApiController {
 
             if ("serialize".equals(type)) {
                 if ("java".equals(mode)) {
-                    lastSerialized = JavaSer.serialize(quote);
+                    lastSerialized = JavaSer.serialize(obj);
                 } else {
-                    lastSerialized = quoteCodec.serialize(quote);
+                    lastSerialized = genericForyCodec.serialize(obj);
                 }
             } else {
                 if ("java".equals(mode)) {
                     JavaSer.deserialize(storedData);
                 } else {
-                    quoteCodec.deserialize(storedData);
+                    genericForyCodec.deserialize(storedData);
                 }
             }
 
@@ -203,6 +229,7 @@ public class CompareApiController {
                 .memoryDeltaBytes(memAfter - memBefore)
                 .gcCollectionsDelta(gcCountAfter - gcCountBefore)
                 .gcTimeMsDelta(gcTimeAfter - gcTimeBefore)
+                .objectType((String) session.getAttribute("OBJECT_TYPE"))
                 .build();
     }
 
