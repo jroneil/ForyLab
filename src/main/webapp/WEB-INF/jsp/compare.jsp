@@ -5,7 +5,7 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Serialization Lab v3.1 | Rigorous Performance Proof</title>
+        <title>Serialization Lab v3.2 | Rigorous Performance Proof</title>
         <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
         <style>
             :root {
@@ -263,7 +263,7 @@
     <body>
         <div class="container">
             <header>
-                <h1>Serialization Lab v3.0</h1>
+                <h1>Serialization Lab v3.2</h1>
                 <p class="subtitle">Rugorous Proof Benchmarking | JIT | Throughput | Payload Size</p>
             </header>
 
@@ -301,6 +301,8 @@
                                 Prepare Object
                             </button>
                             <button id="btnRunBoth" class="btn-outline" disabled>Run Comparison</button>
+                            <button id="btnReRun" class="btn-outline" onclick="reRun()" disabled>🔁 Re-run Same
+                                Config</button>
                             <button id="btnExport" class="btn-outline" onclick="exportToCSV()" disabled>Export
                                 CSV</button>
                         </div>
@@ -326,7 +328,14 @@
                     </section>
 
                     <section class="card">
-                        <h2>Latency Distribution Histogram</h2>
+                        <div class="status-header"
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <h2>Latency Distribution Histogram</h2>
+                            <div class="checkbox-group" style="margin-bottom:0">
+                                <input type="checkbox" id="logScale" onchange="toggleLogScale()">
+                                <label for="logScale" style="font-size:0.75rem">Log scale</label>
+                            </div>
+                        </div>
                         <div class="chart-container">
                             <canvas id="histogramChart"></canvas>
                         </div>
@@ -353,6 +362,10 @@
                                         <th>Iter</th>
                                         <th>Warm</th>
                                         <th>Avg (ms)</th>
+                                        <th>P50</th>
+                                        <th>P95</th>
+                                        <th>P99</th>
+                                        <th>StdDev</th>
                                         <th>Throughput</th>
                                     </tr>
                                 </thead>
@@ -381,6 +394,7 @@
         <script>
             const btnStore = document.getElementById('btnStore');
             const btnRunBoth = document.getElementById('btnRunBoth');
+            const btnReRun = document.getElementById('btnReRun');
             const btnExport = document.getElementById('btnExport');
             const jsonOutput = document.getElementById('jsonOutput');
             const resultsBody = document.getElementById('resultsBody');
@@ -463,7 +477,7 @@
             }
 
             btnStore.addEventListener('click', async () => {
-                const sizeKb = document.getElementById('sizeKb').value;
+                const sizeKb = parseInt(document.getElementById('sizeKb').value, 10);
                 const circular = document.getElementById('circularRefs').checked;
                 storeLoader.style.display = 'inline-block';
                 btnStore.disabled = true;
@@ -485,6 +499,9 @@
                         ratio: `\${(data.javaBytesSize / data.foryBytesSize).toFixed(1)}x smaller`
                     }, null, 2);
 
+                    // ✅ LOCK circular setting after object creation
+                    document.getElementById('circularRefs').disabled = true;
+
                     btnRunBoth.disabled = false;
                     btnExport.disabled = false;
                 } catch (e) {
@@ -495,9 +512,10 @@
                 }
             });
 
+
             async function runBench(mode) {
-                const iterations = document.getElementById('iterations').value;
-                const warmup = document.getElementById('warmup').value;
+                const iterations = parseInt(document.getElementById('iterations').value, 10);
+                const warmup = parseInt(document.getElementById('warmup').value, 10);
                 const type = document.getElementById('benchType').value;
 
                 const circular = document.getElementById('circularRefs').checked;
@@ -506,9 +524,9 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        iterations: parseInt(iterations),
-                        warmup: parseInt(warmup),
-                        circular: circular,
+                        iterations,
+                        warmup,
+                        circular,
                         mode, type
                     })
                 });
@@ -517,15 +535,20 @@
                 const row = document.createElement('tr');
                 const badgeClass = data.mode === 'java' ? 'badge-java' : 'badge-fory';
                 row.innerHTML = `
-                <td><span class="mode-badge \${badgeClass}">\${data.mode}</span></td>
-                <td>\${data.type === 'serialize' ? 'Write' : 'Read'}</td>
-                <td>\${formatBytes(data.payloadBytes)}</td>
-                <td>\${data.circular ? 'Yes' : 'No'}</td>
-                <td>\${data.iterations}</td>
-                <td>\${data.warmup}</td>
-                <td><strong>\${data.avgMs.toFixed(3)}</strong></td>
-                <td>\${Math.round(data.throughput).toLocaleString()}</td>
-            `;
+                    <td><span class="mode-badge \${badgeClass}">\${data.mode}</span></td>
+                    <td>\${data.type === 'serialize' ? 'Write' : 'Read'}</td>
+                    <td>\${formatBytes(data.payloadBytes)}</td>
+                    <td>\${data.circular ? 'Yes' : 'No'}</td>
+                    <td>\${data.iterations}</td>
+                    <td>\${data.warmup}</td>
+                    <td><strong>\${data.avgMs.toFixed(3)}</strong></td>
+                    <td>\${(data.p50Ms ?? 0).toFixed(3)}</td>
+                    <td>\${(data.p95Ms ?? 0).toFixed(3)}</td>
+                    <td>\${(data.p99Ms ?? 0).toFixed(3)}</td>
+                    <td>\${(data.stddevMs ?? 0).toFixed(3)}</td>
+                    <td>\${Math.round(data.throughput).toLocaleString()}</td>
+                    `;
+
                 resultsBody.prepend(row);
                 return data;
             }
@@ -547,24 +570,74 @@
                 histChart.data.datasets[1].data = fory.samples.slice(0, count);
                 histChart.update();
 
+                const sizeKb = parseInt(document.getElementById('sizeKb').value, 10);
+                const circular = document.getElementById('circularRefs').checked;
+                const iterations = parseInt(document.getElementById('iterations').value, 10);
+                const warmup = parseInt(document.getElementById('warmup').value, 10);
+                const op = document.getElementById('benchType').value;
+
+                function pickStats(b) {
+                    return {
+                        avgMs: b.avgMs,
+                        p50Ms: b.p50Ms,
+                        p95Ms: b.p95Ms,
+                        p99Ms: b.p99Ms,
+                        stddevMs: b.stddevMs,
+                        throughputOpsSec: Math.round(b.throughput),
+                        payloadBytes: b.payloadBytes,
+                        jvmImpact: {
+                            memDelta: formatBytes(b.memoryDeltaBytes),
+                            gcCollections: b.gcCollectionsDelta,
+                            gcTime: b.gcTimeMsDelta + "ms"
+                        }
+                    };
+                }
+
                 jsonOutput.innerText = JSON.stringify({
                     outcome: "Comparison Finished",
-                    speedup: `\${(java.avgMs / fory.avgMs).toFixed(1)}x faster`,
-                    throughput_surplus: `\${Math.round(fory.throughput - java.throughput).toLocaleString()} ops/s`,
-                    data: { java, fory }
+                    config: { sizeKb, circular, iterations, warmup, operation: op },
+                    headline: {
+                        avgSpeedup: `\${(java.avgMs / fory.avgMs).toFixed(2)}x`,
+                        p95Speedup: `\${((java.p95Ms ?? java.avgMs) / (fory.p95Ms ?? fory.avgMs)).toFixed(2)}x`,
+                        payloadRatio: `\${(java.payloadBytes / fory.payloadBytes).toFixed(2)}x`,
+                        throughputDeltaOpsSec: Math.round(fory.throughput - java.throughput)
+                    },
+                    java: pickStats(java),
+                    fory: pickStats(fory),
+                    raw: { java, fory }
                 }, null, 2);
+
 
                 lastBenchmarks.push(java, fory);
                 btnRunBoth.disabled = false;
                 btnRunBoth.innerText = 'Run Comparison';
+                btnReRun.disabled = false;
             });
+
+            async function reRun() {
+                btnRunBoth.click();
+            }
+
+            function toggleLogScale() {
+                const isLog = document.getElementById('logScale').checked;
+                histChart.options.scales.y.type = isLog ? 'logarithmic' : 'linear';
+                histChart.update();
+            }
 
             function exportToCSV() {
                 if (lastBenchmarks.length === 0) return;
-                let csv = "Mode,Operation,Object Size (Bytes),Circular Refs,Iterations,Warmup Cycles,Avg Latency (ms),P95 Latency (ms),Throughput (ops/s)\n";
+
+                let csv =
+                    "Mode,Operation,Object Size (Bytes),Circular Refs,Iterations,Warmup Cycles," +
+                    "Avg Latency (ms),P50 (ms),P95 (ms),P99 (ms),StdDev (ms)," +
+                    "Throughput (ops/s),Mem Delta (Bytes),GC Time (ms)\n";
+
                 lastBenchmarks.forEach(b => {
-                    csv += `\${b.mode},\${b.type},\${b.payloadBytes},\${b.circular},\${b.iterations},\${b.warmup},\${b.avgMs},\${b.p95Ms},\${b.throughput}\n`;
+                    csv += `\${b.mode},\${b.type},\${b.payloadBytes},\${b.circular},\${b.iterations},\${b.warmup},` +
+                        `\${b.avgMs},\${b.p50Ms ?? ""},\${b.p95Ms ?? ""},\${b.p99Ms ?? ""},\${b.stddevMs ?? ""},` +
+                        `\${Math.round(b.throughput)},\${b.memoryDeltaBytes},\${b.gcTimeMsDelta}\n`;
                 });
+
                 const blob = new Blob([csv], { type: 'text/csv' });
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
@@ -575,6 +648,7 @@
                 a.click();
                 document.body.removeChild(a);
             }
+
 
             function copyJson() {
                 const content = jsonOutput.innerText;
@@ -606,6 +680,12 @@
             function clearResults() {
                 resultsBody.innerHTML = '';
                 lastBenchmarks = [];
+                btnReRun.disabled = true;
+
+                document.getElementById('circularRefs').disabled = false;
+                // optional (recommended):
+                // document.getElementById('sizeKb').disabled = false;
+
                 if (perfChart) perfChart.data.datasets[0].data = [0, 0];
                 if (sizeChart) sizeChart.data.datasets[0].data = [0, 0];
                 if (histChart) {
@@ -616,6 +696,7 @@
                 sizeChart.update();
                 histChart.update();
             }
+
 
             initCharts();
         </script>

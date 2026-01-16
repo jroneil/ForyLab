@@ -3,9 +3,13 @@ package com.example.demo.compare.dto;
 import lombok.Builder;
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 @Builder
 public class BenchResponse {
+
+    // ===== ORIGINAL FIELDS (UNCHANGED) =====
     private double avgMs;
     private double p95Ms;
     private double minMs;
@@ -17,5 +21,17 @@ public class BenchResponse {
     private String mode;
     private String type;
     private boolean circular;
-    private java.util.List<Double> samples; // for histogram
+    private List<Double> samples; // for histogram
+
+    // ===== NEW (ADDITIVE ONLY) =====
+    private double p50Ms; // median
+    private double p99Ms; // tail latency
+    private double stddevMs; // latency stability
+
+    // JVM Impact (v3.2)
+    private long memoryBeforeBytes;
+    private long memoryAfterBytes;
+    private long memoryDeltaBytes;
+    private long gcCollectionsDelta;
+    private long gcTimeMsDelta;
 }

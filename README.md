@@ -1,8 +1,10 @@
-# Serialization Lab v3.0: Rigorous Performance Proof
+# Serialization Lab v3.2: Rigorous Performance Proof
 
 This project is a high-performance benchmark laboratory designed to compare **Java Native Serialization** with **Apache Fory (formerly Apache Fury)** in a Spring Session (JDBC) environment. 
 
-Version 3.0 is the most rigorous release, providing industrial-grade analytics to prove the benefits of modern serialization.
+Version 3.2 is the most comprehensive release, providing deep JVM observability and advanced statistical analysis to prove the benefits of modern serialization.
+
+---
 
 ## 🚀 Getting Started
 
@@ -25,28 +27,40 @@ mvn spring-boot:run
 
 ---
 
-## 🎮 Rigorous Proof Features (v3.0)
+## 🎮 Rigorous Proof Features (v3.2)
 
-The laboratory now includes five critical areas of proof:
+The laboratory now includes seven critical areas of proof:
 
-### 1. Payload Size Analytics
-Fory doesn't just run faster; it produces significantly smaller byte arrays. Smaller payloads reduce database storage costs and network bandwidth usage. The UI now features a **horizontal bar chart** comparing actual bytes stored.
+### 1. JVM Impact Analysis (NEW v3.2)
+Capture hard evidence of system overhead beyond just latency. The **Protocol Analysis** window now surfaces:
+- **Memory Delta**: Absolute heap usage change during the test.
+- **GC Collections**: Number of garbage collection events triggered.
+- **GC Time**: Total JVM pause time spent in garbage collection.
 
-### 2. Throughput Mode (Ops/Sec)
-Beyond individual latency, we now measure **Throughput (Operations per Second)**. This illustrates how many more concurrent users a system can handle when switching to Fory.
+### 2. Advanced Statistical Metrics (NEW v3.2)
+Go beyond simple averages with high-fidelity latency tracking:
+- **P50 (Median)**: Typical user experience.
+- **P99 (Tail)**: Captures the worst-case outliers (the "long tail").
+- **StdDev**: Measures performance consistency and "jitter."
 
-### 3. Latency Histogram
-Averages can be misleading. The v3.0 dashboard provides a **line chart distribution** of your samples. This allows you to visualize "jitter" and see Fory's consistent high performance compared to Java's overhead.
+### 3. Payload Size Analytics
+Fory produces significantly smaller byte arrays than Java. Smaller payloads reduce database storage costs and network bandwidth usage. The UI features a **horizontal bar chart** for visual comparison.
 
-### 4. Circular Reference Test
-Real-world objects are often circular (e.g., Parent -> Child -> Parent). Use the **"Circular References"** toggle to prove that Fory's reference tracking is as robust and production-ready as native Java serialization.
+### 4. Throughput Mode (Ops/Sec)
+Measure how many operations the system can handle per second. This illustrates the scalability benefits for high-traffic environments.
 
-### 5. Industrial Export
-Finished your benchmarks? Click **"Export CSV"** to download all raw benchmark data, including averages, throughput, and P95 metrics, for inclusion in technical reports or architectural reviews.
+### 5. Latency Histogram with Log Scale
+Visualize the distribution of samples. v3.2 adds a **Log scale toggle** to better inspect tail latency outliers when the performance gap is significant.
+
+### 6. Circular Reference Test
+Prove robustness with complex domain models. Use the **"Circular References"** toggle to verify Fory's reference tracking (e.g., Parent -> Child -> Parent).
+
+### 7. Industrial Export (Enhanced)
+Download a comprehensive **CSV Export** containing all 14 data points, including p-levels, throughput, memory deltas, and GC metrics for technical reports.
 
 ---
 
-## Database Switching: MS SQL Server
+## 🗄️ Database Switching: MS SQL Server
 
 By default, the lab uses an in-memory **H2 Database**. To test against **MS SQL Server**:
 
@@ -59,30 +73,39 @@ By default, the lab uses an in-memory **H2 Database**. To test against **MS SQL 
 
 ---
 
-## How to Run a Rigorous Test
+## 🔬 How to Run a Rigorous Test
 
 1.  **Prepare Environment**: Choose your **Object Size** (e.g., 500 KB) and toggle **Circular References**. Click **"Prepare Object"**.
 2.  **Heat the JIT**: Set **Warm-up Cycles** to `2000` and **Iterations** to `500`.
-3.  **Execute**: Click **"Run Comparison"**.
+3.  **Execute**: Click **"Run Comparison"**. 
 4.  **Analyze**: 
-    - Check the **Speedup** multiplier in the Protocol Analysis window.
-    - View the **Histogram** to see Fory's tight latency distribution.
-    - Check the **Payload Size** chart to see the storage savings.
+    - Check the **jvmImpact** block in the Protocol Analysis window for GC/Memory data.
+    - Toggle **Log scale** on the Histogram to inspect performance consistency.
+    - Use **🔁 Re-run Same Config** to verify results without regenerating the object.
+5.  **Export**: Click **"Export CSV"** to save your evidence.
 
 ---
 
-## Project Structure
+## 🛠 Project Structure
 
 - `ForyConfig.java`: Configures the `ThreadSafeFory` bean (v0.14.1+).
 - `QuoteFactory.java`: Industrial domain model generator supporting circular graphs.
-- `CompareApiController.java`: High-concurrency benchmark engine.
-- `compare.jsp`: Professional dashboard with Chart.js analytics.
+- `CompareApiController.java`: High-concurrency benchmark engine with JVM metric capture.
+- `compare.jsp`: Professional dashboard with Chart.js analytics and v3.2 UX polish.
 
 ## 📝 Troubleshooting
 
-### "C:/Users/.../test" not found (H2 Console)
+### JDBC Connection Errors
+If using SQL Server, ensure the credentials in `application-sqlserver.properties` are correct and the database is reachable.
+
+### H2 Console Access
 The H2 console defaults to a file-based URL. Ensure you change the **JDBC URL** to:
 `jdbc:h2:mem:testdb`
+
+---
+## ⚖️ License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 *Built with ❤️ for performance-obsessed developers.*
