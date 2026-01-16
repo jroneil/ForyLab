@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Session Serialization Comparison</title>
+    <title>Serialization Lab v3.0 | Rigorous Performance Proof</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -31,65 +31,75 @@
             background-color: var(--bg);
             color: var(--text);
             line-height: 1.6;
-            padding: 2rem;
+            padding: 1rem;
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
         }
 
         header {
-            margin-bottom: 2rem;
+            margin-bottom: 1.5rem;
             text-align: center;
         }
 
         h1 {
-            font-size: 2.5rem;
+            font-size: 2.2rem;
             font-weight: 600;
             background: linear-gradient(to right, #818cf8, #c084fc);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.3rem;
         }
 
         .subtitle {
             color: var(--text-muted);
-            font-size: 1.1rem;
+            font-size: 1rem;
         }
 
         .dashboard-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2rem;
+            grid-template-columns: 350px 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 1100px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
         }
 
         .card {
             background: var(--card-bg);
             border-radius: 1rem;
-            padding: 2rem;
+            padding: 1.5rem;
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
             border: 1px solid var(--border);
-            margin-bottom: 2rem;
+            margin-bottom: 1.5rem;
         }
 
-        .controls {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 1.5rem;
-            align-items: end;
+        h2 {
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
         .form-group {
             display: flex;
             flex-direction: column;
-            gap: 0.5rem;
+            gap: 0.4rem;
+            margin-bottom: 1rem;
         }
 
         label {
             font-weight: 500;
             color: var(--text-muted);
-            font-size: 0.9rem;
+            font-size: 0.85rem;
         }
 
         input,
@@ -97,9 +107,9 @@
             background: var(--bg);
             border: 1px solid var(--border);
             border-radius: 0.5rem;
-            padding: 0.75rem;
+            padding: 0.6rem;
             color: var(--text);
-            font-size: 1rem;
+            font-size: 0.95rem;
             transition: border-color 0.2s;
         }
 
@@ -108,19 +118,31 @@
             border-color: var(--primary);
         }
 
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .checkbox-group input {
+            width: 1.2rem;
+            height: 1.2rem;
+        }
+
         .button-group {
             display: flex;
-            gap: 1rem;
-            flex-wrap: wrap;
-            margin-top: 1.5rem;
+            flex-direction: column;
+            gap: 0.8rem;
+            margin-top: 1rem;
         }
 
         button {
             cursor: pointer;
-            padding: 0.75rem 1.5rem;
+            padding: 0.7rem 1.2rem;
             border-radius: 0.5rem;
             font-weight: 600;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             transition: all 0.2s;
             border: none;
             display: flex;
@@ -139,26 +161,6 @@
             transform: translateY(-1px);
         }
 
-        .btn-java {
-            background: var(--java-color);
-            color: white;
-        }
-
-        .btn-java:hover {
-            opacity: 0.9;
-            transform: translateY(-1px);
-        }
-
-        .btn-fory {
-            background: var(--fory-color);
-            color: white;
-        }
-
-        .btn-fory:hover {
-            opacity: 0.9;
-            transform: translateY(-1px);
-        }
-
         .btn-outline {
             background: transparent;
             border: 1px solid var(--border);
@@ -169,33 +171,37 @@
             background: var(--border);
         }
 
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
         .results-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 1rem;
         }
 
         .results-table th,
         .results-table td {
-            padding: 1rem;
+            padding: 0.8rem;
             text-align: left;
             border-bottom: 1px solid var(--border);
+            font-size: 0.9rem;
         }
 
         .results-table th {
             color: var(--text-muted);
             font-weight: 600;
             text-transform: uppercase;
-            font-size: 0.8rem;
-            letter-spacing: 0.05em;
+            font-size: 0.75rem;
         }
 
         .mode-badge {
             display: inline-block;
-            padding: 0.25rem 0.75rem;
+            padding: 0.2rem 0.6rem;
             border-radius: 9999px;
-            font-size: 0.8rem;
-            font-weight: 600;
+            font-size: 0.75rem;
+            font-weight: 700;
             text-transform: uppercase;
         }
 
@@ -214,23 +220,15 @@
             border-radius: 0.5rem;
             padding: 1rem;
             font-family: 'Consolas', 'Monaco', monospace;
-            font-size: 0.85rem;
-            max-height: 200px;
+            font-size: 0.8rem;
+            max-height: 150px;
             overflow-y: auto;
             color: #10b981;
-            margin-top: 1rem;
-        }
-
-        .status-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
         }
 
         .loader {
-            width: 20px;
-            height: 20px;
+            width: 16px;
+            height: 16px;
             border: 2px solid rgba(255, 255, 255, 0.3);
             border-radius: 50%;
             border-top-color: white;
@@ -244,35 +242,18 @@
             }
         }
 
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 1rem;
-            margin-bottom: 1rem;
-        }
-
-        .stat-card {
-            background: rgba(255, 255, 255, 0.03);
-            padding: 1rem;
-            border-radius: 0.5rem;
-            border: 1px solid var(--border);
-        }
-
-        .stat-value {
-            font-size: 1.5rem;
-            font-weight: 600;
-            display: block;
-        }
-
-        .stat-label {
-            color: var(--text-muted);
-            font-size: 0.8rem;
-        }
-
         .chart-container {
             position: relative;
-            height: 300px;
+            height: 220px;
             width: 100%;
+            margin-top: 1rem;
+        }
+
+        .analytics-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 1rem;
         }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -281,36 +262,37 @@
 <body>
     <div class="container">
         <header>
-            <h1>Serialization Lab v2.0</h1>
-            <p class="subtitle">Industrial Benchmark: Java Native vs Apache Fury (Fory) JIT</p>
+            <h1>Serialization Lab v3.0</h1>
+            <p class="subtitle">Rugorous Proof Benchmarking | JIT | Throughput | Payload Size</p>
         </header>
 
         <div class="dashboard-grid">
-            <div class="left-col">
+            <!-- Sidebar Controls -->
+            <div class="sidebar">
                 <section class="card">
-                    <h2>Configuration</h2>
-                    <div class="controls">
-                        <div class="form-group">
-                            <label for="sizeKb">Payload Size (KB)</label>
-                            <input type="number" id="sizeKb" value="500" min="1" max="5000">
-                        </div>
-                        <div class="form-group">
-                            <label for="benchType">Bench Type</label>
-                            <select id="benchType">
-                                <option value="deserialize">Deserialize (Read)</option>
-                                <option value="serialize">Serialize (Write)</option>
-                            </select>
-                        </div>
+                    <h2>⚙️ Config</h2>
+                    <div class="form-group">
+                        <label for="sizeKb">Object Size (KB)</label>
+                        <input type="number" id="sizeKb" value="500" min="1" max="5000">
                     </div>
-                    <div class="controls" style="margin-top: 1rem;">
-                        <div class="form-group">
-                            <label for="iterations">Iterations</label>
-                            <input type="number" id="iterations" value="500" min="1" max="10000">
-                        </div>
-                        <div class="form-group">
-                            <label for="warmup">Warm-up Cycles</label>
-                            <input type="number" id="warmup" value="1000" min="0" max="10000">
-                        </div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="circularRefs">
+                        <label for="circularRefs">Circular References</label>
+                    </div>
+                    <div class="form-group">
+                        <label for="benchType">Operation</label>
+                        <select id="benchType">
+                            <option value="deserialize">Deserialize (Read)</option>
+                            <option value="serialize">Serialize (Write)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="iterations">Iterations</label>
+                        <input type="number" id="iterations" value="500" min="1" max="10000">
+                    </div>
+                    <div class="form-group">
+                        <label for="warmup">Warm-up Cycles</label>
+                        <input type="number" id="warmup" value="1000" min="0" max="100000">
                     </div>
                     <div class="button-group">
                         <button id="btnStore" class="btn-primary">
@@ -318,57 +300,64 @@
                             Prepare Object
                         </button>
                         <button id="btnRunBoth" class="btn-outline" disabled>🔥 Run Comparison</button>
+                        <button id="btnExport" class="btn-outline" onclick="exportToCSV()" disabled>📥 Export
+                            CSV</button>
                     </div>
                 </section>
 
-                <div id="statusSection" style="display: none;">
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <span class="stat-label">Java Payload</span>
-                            <span id="javaSize" class="stat-value">0 B</span>
-                        </div>
-                        <div class="stat-card">
-                            <span class="stat-label">Fory Payload</span>
-                            <span id="forySize" class="stat-value">0 B</span>
+                <div id="statusSection">
+                    <div class="card">
+                        <h2>📦 Payload Size</h2>
+                        <div class="chart-container" style="height: 150px;">
+                            <canvas id="sizeChart"></canvas>
                         </div>
                     </div>
                 </div>
+            </div>
 
+            <!-- Main Charts Column -->
+            <div class="main-charts">
                 <section class="card">
-                    <h2>Latency Distribution (ms)</h2>
+                    <h2>📈 Latency Comparison (Avg ms)</h2>
                     <div class="chart-container">
                         <canvas id="performanceChart"></canvas>
                     </div>
                 </section>
+
+                <section class="card">
+                    <h2>📊 Latency Distribution Histogram</h2>
+                    <div class="chart-container">
+                        <canvas id="histogramChart"></canvas>
+                    </div>
+                </section>
             </div>
 
-            <div class="right-col">
+            <!-- Tables Column -->
+            <div class="data-column">
                 <section class="card">
                     <div class="status-header"
-                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom:1rem;">
-                        <h2>Recent Results</h2>
-                        <button class="btn-outline" onclick="clearResults()">Clear</button>
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <h2>📋 Results</h2>
+                        <button class="btn-outline" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;"
+                            onclick="clearResults()">Clear</button>
                     </div>
-                    <div style="max-height: 500px; overflow-y: auto;">
+                    <div style="max-height: 400px; overflow-y: auto;">
                         <table class="results-table">
                             <thead>
                                 <tr>
                                     <th>Mode</th>
-                                    <th>Type</th>
                                     <th>Avg (ms)</th>
-                                    <th>P95 (ms)</th>
+                                    <th>Throughput</th>
                                 </tr>
                             </thead>
-                            <tbody id="resultsBody">
-                                <!-- Results will be injected here -->
-                            </tbody>
+                            <tbody id="resultsBody"></tbody>
                         </table>
                     </div>
                 </section>
 
                 <section class="card">
-                    <h2>Protocol Analytics</h2>
-                    <div id="jsonOutput" class="json-display">Initialize environment...</div>
+                    <h2>🔍 Protocol Analysis</h2>
+                    <div id="jsonOutput" class="json-display">System ready...</div>
                 </section>
             </div>
         </div>
@@ -377,47 +366,77 @@
     <script>
         const btnStore = document.getElementById('btnStore');
         const btnRunBoth = document.getElementById('btnRunBoth');
+        const btnExport = document.getElementById('btnExport');
         const jsonOutput = document.getElementById('jsonOutput');
         const resultsBody = document.getElementById('resultsBody');
         const storeLoader = document.getElementById('storeLoader');
 
-        let chart;
+        let perfChart, sizeChart, histChart;
+        let lastBenchmarks = [];
 
-        function initChart() {
-            const ctx = document.getElementById('performanceChart').getContext('2d');
-            chart = new Chart(ctx, {
+        function initCharts() {
+            const chartOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true, grid: { color: '#334155' } },
+                    x: { grid: { display: false } }
+                },
+                plugins: { legend: { display: false } }
+            };
+
+            perfChart = new Chart(document.getElementById('performanceChart'), {
                 type: 'bar',
                 data: {
                     labels: ['Java Native', 'Apache Fory'],
                     datasets: [{
-                        label: 'Average Latency (ms)',
                         data: [0, 0],
-                        backgroundColor: ['rgba(245, 158, 11, 0.5)', 'rgba(6, 182, 212, 0.5)'],
+                        backgroundColor: ['rgba(245, 158, 11, 0.6)', 'rgba(6, 182, 212, 0.6)'],
+                        borderColor: ['#f59e0b', '#06b6d4'],
+                        borderWidth: 1
+                    }]
+                },
+                options: chartOptions
+            });
+
+            sizeChart = new Chart(document.getElementById('sizeChart'), {
+                type: 'bar',
+                data: {
+                    labels: ['Java', 'Fory'],
+                    datasets: [{
+                        data: [0, 0],
+                        backgroundColor: ['rgba(245, 158, 11, 0.4)', 'rgba(6, 182, 212, 0.4)'],
                         borderColor: ['#f59e0b', '#06b6d4'],
                         borderWidth: 1
                     }]
                 },
                 options: {
+                    indexAxis: 'y',
                     responsive: true,
                     maintainAspectRatio: false,
                     scales: {
-                        y: { beginAtZero: true, grid: { color: '#334155' } },
-                        x: { grid: { display: false } }
+                        x: { beginAtZero: true, grid: { color: '#334155' } },
+                        y: { grid: { display: false } }
                     },
-                    plugins: {
-                        legend: { display: false }
-                    }
+                    plugins: { legend: { display: false } }
                 }
             });
-        }
 
-        function updateChart(javaAvg, foryAvg) {
-            chart.data.datasets[0].data = [javaAvg, foryAvg];
-            chart.update();
-        }
-
-        function updateJson(obj) {
-            jsonOutput.innerText = JSON.stringify(obj, null, 2);
+            histChart = new Chart(document.getElementById('histogramChart'), {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        { label: 'Java', data: [], borderColor: '#f59e0b', tension: 0.4 },
+                        { label: 'Fory', data: [], borderColor: '#06b6d4', tension: 0.4 }
+                    ]
+                },
+                options: {
+                    ...chartOptions,
+                    plugins: { legend: { display: true, labels: { color: '#fff' } } },
+                    scales: { y: { beginAtZero: true }, x: { display: false } }
+                }
+            });
         }
 
         function formatBytes(bytes) {
@@ -430,21 +449,26 @@
 
         btnStore.addEventListener('click', async () => {
             const sizeKb = document.getElementById('sizeKb').value;
+            const circular = document.getElementById('circularRefs').checked;
             storeLoader.style.display = 'inline-block';
             btnStore.disabled = true;
 
             try {
-                const res = await fetch(`/api/compare/store?sizeKb=\${sizeKb}`, { method: 'POST' });
+                const res = await fetch(`/api/compare/store?sizeKb=\${sizeKb}&circular=\${circular}`, { method: 'POST' });
                 const data = await res.json();
-                updateJson(data);
 
                 document.getElementById('statusSection').style.display = 'block';
-                document.getElementById('javaSize').innerText = formatBytes(data.javaBytesSize);
-                document.getElementById('forySize').innerText = formatBytes(data.foryBytesSize);
+                sizeChart.data.datasets[0].data = [data.javaBytesSize, data.foryBytesSize];
+                sizeChart.update();
+
+                jsonOutput.innerText = `Object Prepared. 
+Java: \${formatBytes(data.javaBytesSize)}
+Fory: \${formatBytes(data.foryBytesSize)} (\${(data.javaBytesSize / data.foryBytesSize).toFixed(1)}x smaller)`;
 
                 btnRunBoth.disabled = false;
+                btnExport.disabled = false;
             } catch (e) {
-                updateJson({ error: e.message });
+                jsonOutput.innerText = "Error: " + e.message;
             } finally {
                 storeLoader.style.display = 'none';
                 btnStore.disabled = false;
@@ -462,55 +486,80 @@
                 body: JSON.stringify({
                     iterations: parseInt(iterations),
                     warmup: parseInt(warmup),
-                    mode,
-                    type
+                    mode, type
                 })
             });
             const data = await res.json();
-            addResultRow(data);
-            return data;
-        }
 
-        function addResultRow(data) {
             const row = document.createElement('tr');
             const badgeClass = data.mode === 'java' ? 'badge-java' : 'badge-fory';
             row.innerHTML = `
                 <td><span class="mode-badge \${badgeClass}">\${data.mode}</span></td>
-                <td>\${data.type}</td>
                 <td><strong>\${data.avgMs.toFixed(3)}</strong></td>
-                <td>\${data.p95Ms.toFixed(3)}</td>
+                <td>\${Math.round(data.throughput).toLocaleString()} ops/s</td>
             `;
             resultsBody.prepend(row);
+            return data;
         }
 
         btnRunBoth.addEventListener('click', async () => {
             btnRunBoth.disabled = true;
-            btnRunBoth.innerText = '🏃 Running Benchmarks...';
+            btnRunBoth.innerText = '🏃 Testing...';
 
-            const javaData = await runBench('java');
-            const foryData = await runBench('fory');
+            const java = await runBench('java');
+            const fory = await runBench('fory');
 
-            updateChart(javaData.avgMs, foryData.avgMs);
+            perfChart.data.datasets[0].data = [java.avgMs, fory.avgMs];
+            perfChart.update();
 
-            // Show both in analytics for comparison
-            updateJson({
-                comparison: {
-                    java: javaData,
-                    fory: foryData,
-                    speedup: (javaData.avgMs / foryData.avgMs).toFixed(2) + 'x faster'
-                }
-            });
+            // Histogram Update (use first 50 samples for clarity)
+            const count = Math.min(java.samples.length, 50);
+            histChart.data.labels = Array.from({ length: count }, (_, i) => i);
+            histChart.data.datasets[0].data = java.samples.slice(0, count);
+            histChart.data.datasets[1].data = fory.samples.slice(0, count);
+            histChart.update();
 
+            jsonOutput.innerText = `DONE! 
+Fory is \${(java.avgMs / fory.avgMs).toFixed(1)}x faster.
+Throughput Gap: \${Math.round(fory.throughput - java.throughput).toLocaleString()} ops/s surplus.`;
+
+            lastBenchmarks.push(java, fory);
             btnRunBoth.disabled = false;
             btnRunBoth.innerText = '🔥 Run Comparison';
         });
 
-        function clearResults() {
-            resultsBody.innerHTML = '';
-            if (chart) updateChart(0, 0);
+        function exportToCSV() {
+            if (lastBenchmarks.length === 0) return;
+            let csv = "Mode,Type,PayloadBytes,AvgMs,P95Ms,Throughput\n";
+            lastBenchmarks.forEach(b => {
+                csv += `\${b.mode},\${b.type},\${b.payloadBytes},\${b.avgMs},\${b.p95Ms},\${b.throughput}\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.setAttribute('hidden', '');
+            a.setAttribute('href', url);
+            a.setAttribute('download', 'serialization_results.csv');
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
         }
 
-        initChart();
+        function clearResults() {
+            resultsBody.innerHTML = '';
+            lastBenchmarks = [];
+            if (perfChart) perfChart.data.datasets[0].data = [0, 0];
+            if (sizeChart) sizeChart.data.datasets[0].data = [0, 0];
+            if (histChart) {
+                histChart.data.datasets[0].data = [];
+                histChart.data.datasets[1].data = [];
+            }
+            perfChart.update();
+            sizeChart.update();
+            histChart.update();
+        }
+
+        initCharts();
     </script>
 </body>
 

@@ -10,9 +10,12 @@ public class BenchResponse {
     private double p95Ms;
     private double minMs;
     private double maxMs;
+    private double throughput; // ops/sec
     private int iterations;
     private int warmup;
     private int payloadBytes;
     private String mode;
     private String type;
+    private boolean circular;
+    private java.util.List<Double> samples; // for histogram
 }

@@ -28,8 +28,10 @@ public class CompareApiController {
     private QuoteCodec quoteCodec;
 
     @PostMapping("/store")
-    public StoreResponse store(@RequestParam(defaultValue = "100") int sizeKb, HttpSession session) throws Exception {
-        Quote quote = QuoteFactory.createLargeQuote(sizeKb);
+    public StoreResponse store(@RequestParam(defaultValue = "100") int sizeKb,
+            @RequestParam(defaultValue = "false") boolean circular,
+            HttpSession session) throws Exception {
+        Quote quote = QuoteFactory.createLargeQuote(sizeKb, circular);
 
         byte[] javaBytes = JavaSer.serialize(quote);
         byte[] foryBytes = quoteCodec.serialize(quote);
@@ -99,8 +101,10 @@ public class CompareApiController {
 
         // Measurement phase
         List<Long> times = new ArrayList<>();
+        List<Double> msSamples = new ArrayList<>();
         int iterations = request.getIterations();
 
+        long totalMeasureStart = System.nanoTime();
         for (int i = 0; i < iterations; i++) {
             long start = System.nanoTime();
             if ("serialize".equals(type)) {
@@ -114,8 +118,14 @@ public class CompareApiController {
                 else
                     quoteCodec.deserialize(data);
             }
-            times.add(System.nanoTime() - start);
+            long end = System.nanoTime();
+            long duration = end - start;
+            times.add(duration);
+            msSamples.add(duration / 1_000_000.0);
         }
+        long totalMeasureEnd = System.nanoTime();
+        double totalMeasureSecs = (totalMeasureEnd - totalMeasureStart) / 1_000_000_000.0;
+        double throughput = iterations / totalMeasureSecs;
 
         Collections.sort(times);
         double avg = times.stream().mapToLong(Long::longValue).average().orElse(0) / 1_000_000.0;
@@ -128,11 +138,13 @@ public class CompareApiController {
                 .minMs(min)
                 .maxMs(max)
                 .p95Ms(p95)
+                .throughput(throughput)
                 .iterations(iterations)
                 .warmup(warmup)
                 .payloadBytes(data.length)
                 .mode(mode)
                 .type(type)
+                .samples(msSamples)
                 .build();
     }
 }

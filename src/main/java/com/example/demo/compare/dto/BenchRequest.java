@@ -8,4 +8,5 @@ public class BenchRequest {
     private int warmup; // Iterations for JIT warm-up
     private String mode; // "java" or "fory"
     private String type; // "serialize" or "deserialize"
+    private boolean circular;
 }

@@ -1,13 +1,13 @@
-# Serialization Lab v2.0: Spring Session + Apache Fory
+# Serialization Lab v3.0: Rigorous Performance Proof
 
 This project is a high-performance benchmark laboratory designed to compare **Java Native Serialization** with **Apache Fory (formerly Apache Fury)** in a Spring Session (JDBC) environment. 
 
-Version 2.0 introduces **JIT Warm-up cycles**, **Serialization (Write) benchmarking**, and **Real-time Visual Analytics**.
+Version 3.0 is the most rigorous release, providing industrial-grade analytics to prove the benefits of modern serialization.
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Java 17 or higher
+- Java 17+
 - Maven 3.6+
 
 ### 1. Build the Project
@@ -25,54 +25,51 @@ mvn spring-boot:run
 
 ---
 
-## 🎮 Dashboard Configuration
+## 🎮 Rigorous Proof Features (v3.0)
 
-The Laboratory UI allows you to tune the benchmark parameters to simulate production conditions:
+The laboratory now includes five critical areas of proof:
 
-| Setting | Purpose | Why it matters |
-| :--- | :--- | :--- |
-| **Payload Size** | KB of data | Simulates simple vs. deep nested object graphs (Insurance Quotes). |
-| **Bench Type** | Read vs. Write | **Deserialize (Read)** tests session retrieval. **Serialize (Write)** tests session updates. |
-| **Iterations** | Number of tests | Higher numbers provide more statistically significant averages. |
-| **Warm-up Cycles**| JIT Preparation | Fory uses JIT optimization. Warm-ups allow the code to reach peak "hot" performance. |
+### 1. 📦 Payload Size Analytics
+Fory doesn't just run faster; it produces significantly smaller byte arrays. Smaller payloads reduce database storage costs and network bandwidth usage. The UI now features a **horizontal bar chart** comparing actual bytes stored.
 
----
+### 2. 📈 Throughput Mode (Ops/Sec)
+Beyond individual latency, we now measure **Throughput (Operations per Second)**. This illustrates how many more concurrent users a system can handle when switching to Fory.
 
-## 📊 New in v2.0
+### 3. 📊 Latency Histogram
+Averages can be misleading. The v3.0 dashboard provides a **line chart distribution** of your samples. This allows you to visualize "jitter" and see Fory's consistent high performance compared to Java's overhead.
 
-- **Visual Latency Charts**: Real-time bar graphs built with Chart.js to visualize the performance gap.
-- **Bi-Directional Testing**: You can now test both "Serialization" (Object to Bytes) and "Deserialization" (Bytes to Object).
-- **JIT Awareness**: Explicit warm-up controls to showcase how Fory gains speed as the JVM optimizes the execution path.
+### 4. 🔄 Circular Reference Test
+Real-world objects are often circular (e.g., Parent -> Child -> Parent). Use the **"Circular References"** toggle to prove that Fory's reference tracking is as robust and production-ready as native Java serialization.
+
+### 5. 📥 Industrial Export
+Finished your benchmarks? Click **"Export CSV"** to download all raw benchmark data, including averages, throughput, and P95 metrics, for inclusion in technical reports or architectural reviews.
 
 ---
 
 ## 🔬 How to Run a Rigorous Test
 
-1.  **Prepare Environment**: Click **"Prepare Object"**. This generates the insurance quote and caches it in memory for the tests.
-2.  **Toggle Mode**: Choose **"Serialize (Write)"** to see how fast Fory encodes data compared to Java.
-3.  **Heat the JIT**: Set **Warm-up Cycles** to `1000`. This ensures you aren't measuring Fory while it is still "cold."
-4.  **Execute**: Click **"🔥 Run Comparison"**.
-5.  **Analyze**: 
-    - The **Chart** shows a side-by-side comparison of average latency.
-    - The **Recent Results** table tracks P95 (tail latency), which is critical for real-world application responsiveness.
+1.  **Prepare Environment**: Choose your **Object Size** (e.g., 500 KB) and toggle **Circular References**. Click **"Prepare Object"**.
+2.  **Heat the JIT**: Set **Warm-up Cycles** to `2000` and **Iterations** to `500`.
+3.  **Execute**: Click **"🔥 Run Comparison"**.
+4.  **Analyze**: 
+    - Check the **Speedup** multiplier in the Protocol Analysis window.
+    - View the **Histogram** to see Fory's tight latency distribution.
+    - Check the **Payload Size** chart to see the storage savings.
 
 ---
 
 ## 🛠 Project Structure
 
-- `ForyConfig.java`: Configures the `ThreadSafeFory` bean for the application.
-- `QuoteCodec.java`: A wrapper around Fory to handle business object serialization.
-- `CompareApiController.java`: The REST back-end driving the benchmarks.
-- `compare.jsp`: The modern dashboard featuring Chart.js and Glassmorphism design.
+- `ForyConfig.java`: Configures the `ThreadSafeFory` bean (v0.14.1+).
+- `QuoteFactory.java`: Industrial domain model generator supporting circular graphs.
+- `CompareApiController.java`: High-concurrency benchmark engine.
+- `compare.jsp`: Professional dashboard with Chart.js analytics.
 
 ## 📝 Troubleshooting
 
 ### "C:/Users/.../test" not found (H2 Console)
 The H2 console defaults to a file-based URL. Ensure you change the **JDBC URL** to:
 `jdbc:h2:mem:testdb`
-
-### "ThreadLocalFory cannot be resolved"
-Ensure you are using Fory version `0.14.1` or later in your `pom.xml`. Run `mvn clean install` to force a dependency refresh.
 
 ---
 *Built with ❤️ for performance-obsessed developers.*
