@@ -1,5 +1,7 @@
 # Serialization Lab v3.2: Rigorous Performance Proof
 
+![Serialization Lab v3.2 Dashboard](lab3.2.png)
+
 This project is a high-performance benchmark laboratory designed to compare **Java Native Serialization** with **Apache Fory (formerly Apache Fury)** in a Spring Session (JDBC) environment. 
 
 Version 3.2 is the most comprehensive release, providing deep JVM observability and advanced statistical analysis to prove the benefits of modern serialization.
@@ -57,6 +59,32 @@ Prove robustness with complex domain models. Use the **"Circular References"** t
 
 ### 7. Industrial Export (Enhanced)
 Download a comprehensive **CSV Export** containing all 14 data points, including p-levels, throughput, memory deltas, and GC metrics for technical reports.
+
+---
+
+## 🧪 Deep Dive: What These Tests Prove
+
+The laboratory is designed to simulate high-pressure production environments. Here is the scientific significance of each benchmark:
+
+### **1. Serialization (Write) Performance**
+*   **The Proof**: Measures the time taken to convert a session object into bytes before saving to the database.
+*   **Real-World Impact**: High serialization latency blocks the application thread before the database I/O even begins. Faster serialization reduces **Time-to-First-Byte (TTFB)** and improves overall system responsiveness.
+
+### **2. Deserialization (Read) Performance**
+*   **The Proof**: Measures the time to reconstruct the object from bytes upon every HTTP request.
+*   **Real-World Impact**: This is the most frequent operation in stateful apps. Speeding this up directly lowers the "overhead cost" of using Spring Session, making it feel as fast as an in-memory session.
+
+### **3. Payload Size & I/O Reduction**
+*   **The Proof**: Compares the raw byte count of the serialized data.
+*   **Real-World Impact**: Since we are using **JDBC-based sessions**, the CPU speed is only half the story. Smaller payloads mean **less data traveling over the network** and **faster database writes/reads**. This reduces the load on your database server (Postgres, SQL Server, etc.).
+
+### **4. Reference Tracking & Safety (Circular Refs)**
+*   **The Proof**: Tests if the serializer can handle objects that point back to themselves without infinite loops or stack overflows.
+*   **Real-World Impact**: Most "fast" serializers (like JSON or older binary protocols) break on complex business objects. Proving Fory handles circular graphs confirms it is a **safe, drop-in replacement** for native Java serialization without requiring code changes.
+
+### **5. GC Pressure & JVM Longevity**
+*   **The Proof**: Uses the **jvmImpact** metrics (GC Time/Memory Delta) to see how "stressed" the JVM becomes during high iteration bursts.
+*   **Real-World Impact**: High-performance apps often suffer from "tail latency" (P99) spikes caused by Garbage Collection pauses. Fory uses optimized buffer recycling to reduce temporary object creation, leading to a **flatter latency curve** and a more stable production environment.
 
 ---
 

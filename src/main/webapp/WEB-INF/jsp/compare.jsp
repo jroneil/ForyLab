@@ -222,7 +222,7 @@
                 padding: 1rem;
                 font-family: 'Consolas', 'Monaco', monospace;
                 font-size: 0.8rem;
-                max-height: 150px;
+                height: 320px;
                 overflow-y: auto;
                 color: #10b981;
             }
