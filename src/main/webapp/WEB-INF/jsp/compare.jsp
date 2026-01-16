@@ -481,7 +481,6 @@
                 <td>\${data.p95Ms.toFixed(3)}</td>
             `;
             resultsBody.prepend(row);
-            updateJson(data);
         }
 
         btnRunBoth.addEventListener('click', async () => {
@@ -492,6 +491,15 @@
             const foryData = await runBench('fory');
 
             updateChart(javaData.avgMs, foryData.avgMs);
+
+            // Show both in analytics for comparison
+            updateJson({
+                comparison: {
+                    java: javaData,
+                    fory: foryData,
+                    speedup: (javaData.avgMs / foryData.avgMs).toFixed(2) + 'x faster'
+                }
+            });
 
             btnRunBoth.disabled = false;
             btnRunBoth.innerText = '🔥 Run Comparison';
