@@ -2,9 +2,9 @@
 
 ![Serialization Lab v5.0 Dashboard](lab.png)
 
-This project is a high-performance benchmark laboratory designed to compare **Java Native Serialization** with **Apache Fory (formerly Apache Fury)** in various Spring Session environments (JDBC, Redis, or In-Memory). 
+This project is a high-performance benchmark laboratory designed to compare **Java Native Serialization** with **Apache Fory** in various Spring Session environments (JDBC, Redis, or In-Memory). 
 
-Version 5.0 introduces optional **Redis-backed sessions** and a profile-driven backend toggle.
+Version 5.0 introduces **End-to-End I/O Comparison** across multiple backends and deep **Network Efficiency** analytics.
 
 ---
 
@@ -21,7 +21,11 @@ mvn clean compile
 
 ### 2. Run the Application
 ```powershell
-mvn spring-boot:run
+# Standard mode (Memory + JDBC)
+mvn spring-boot:run "-Dspring-boot.run.profiles=h2"
+
+# Full mode (Memory + JDBC + Redis)
+mvn spring-boot:run "-Dspring-boot.run.profiles=h2,redis-session"
 ```
 
 ### 3. Access the Lab
@@ -31,56 +35,67 @@ mvn spring-boot:run
 
 ## 🎮 Rigorous Proof Features (v5.0)
 
-The laboratory now includes twelve critical areas of proof:
+The laboratory now includes fourteen critical areas of proof:
 
-### 1. JVM Impact Card (NEW v3.3)
-A dedicated UI visualization for system overhead. The dashboard now features a real-time table summarizing:
+### 1. End-to-End I/O Comparison (NEW v5.0)
+A specialized "Three-Backend" benchmark that runs side-by-side across:
+- **Local Memory**: Pure serialization overhead.
+- **Redis (NoSQL)**: High-speed binary key-value storage.
+- **JDBC (SQL)**: Relational BLOB storage (H2 or SQL Server).
+This proves Fory's efficiency is compounding—latency savings are realized in both CPU cycles and I/O wait times.
+
+### 2. Redis/IO Impact Analytics (NEW v5.0)
+A deep-dive card that isolates **Network Efficiency**:
+- **Payload Reductions**: Quantifies the % reduction in bytes traveling over the wire.
+- **I/O Transit Speedup**: Measures how much faster smaller packets travel between the app and Redis.
+
+### 3. Object Summary (NEW v5.0)
+Immediately after preparing a test object, the lab displays a structural summary:
+- **Class Map**: Maps the generated object to its serialization-ready class.
+- **Entity Counts**: Shows the number of nested Vehicles, Drivers, or Map entries created by the industrial factory.
+
+### 4. JVM Impact Card
+A dedicated UI visualization for system overhead:
 - **Memory Δ**: Absolute heap usage change during the test.
 - **GC Collections**: Number of garbage collection events triggered.
 - **GC Time**: Total JVM pause time spent in garbage collection.
 
-### 2. Advanced Statistical Metrics (NEW v3.2)
+### 5. Advanced Statistical Metrics
 Go beyond simple averages with high-fidelity latency tracking:
 - **P50 (Median)**: Typical user experience.
-- **P99 (Tail)**: Captures the worst-case outliers (the "long tail").
+- **P99 (Tail)**: Captures the worst-case outliers.
 - **StdDev**: Measures performance consistency and "jitter."
 
-### 3. Payload Size Analytics
-Fory produces significantly smaller byte arrays than Java. Smaller payloads reduce database storage costs and network bandwidth usage. The UI features a **horizontal bar chart** for visual comparison.
+### 6. Payload Size Analytics
+Fory produces significantly smaller byte arrays than Java. Smaller payloads reduce database storage costs and network bandwidth usage. The UI features a horizontal bar chart and explicit byte breakdowns.
 
-### 4. Throughput Mode (Ops/Sec)
-Measure how many operations the system can handle per second. This illustrates the scalability benefits for high-traffic environments.
+### 7. Latency Histogram with Log Scale
+Visualize the distribution of samples. Features a **Log scale toggle** to better inspect tail latency outliers (P99 spikes).
 
-### 5. Latency Histogram with Log Scale
-Visualize the distribution of samples. v3.3 features a **Log scale toggle** to better inspect tail latency outliers when the performance gap is significant.
+### 8. Circular Reference Test
+Prove robustness with complex domain models. Use the "Circular References" toggle to verify reference tracking (e.g., Parent -> Child -> Parent).
 
-### 6. Circular Reference Test
-Prove robustness with complex domain models. Use the **"Circular References"** toggle to verify Fory's reference tracking (e.g., Parent -> Child -> Parent).
+### 9. Industrial Export (CSV)
+Download a comprehensive **CSV Export** containing all 14 data points for technical reports.
 
-### 7. Industrial Export (CSV)
-Download a comprehensive **CSV Export** containing all 14 data points, including p-levels, throughput, memory deltas, and GC metrics for technical reports.
+### 10. One-Click Benchmark Report (PDF-Ready)
+Generate beautifully styled summaries including:
+- **Executive Summary**: Speedup calculations and payload ratios.
+- **Protocol Analysis JSON**: A machine-readable report with backend key formats.
 
-### 8. One-Click Benchmark Report (NEW v4.0)
-Generate high-quality PDF-ready documentation for management and architects.
-- **Print-Friendly HTML**: A beautifully styled, single-page summary of the test.
-- **Structured JSON**: A full machine-readable data package including raw benchmark samples.
-- **Executive Summary**: Automatically calculates speedups, payload ratios, and identifies the JVM efficiency winner.
+### 11. Smart Winner Highlighting
+Identifies which protocol "won" based on memory allocation and GC pressure.
 
-### 9. Smart Winner Highlighting
-The UI automatically identifies which protocol "won" the JVM efficiency test based on memory allocation and GC pressure.
+### 12. Multi-Object Type Benchmarking
+- **Quote**: Standard flat object.
+- **Insurance Policy**: Deeply nested structure.
+- **Collections Blob**: Map/List heavy generic payloads.
 
-### 10. Multi-Object Type Benchmarking (v4.1)
-Choose between different object schemas to see how serialization scales:
-- **Quote**: Standard flat object with some lists.
-- **Insurance Policy**: Deeply nested structure with various primitives and collections.
-- **Collections Blob**: Map-heavy and list-heavy payload to test generic collection overhead.
+### 13. Recommended Defaults
+Context-aware iterations and warmup logic to ensure JIT optimization (C2 compiler) is reached before measurement begins.
 
-### 11. Recommended Defaults & Object Summary
-- **Context-Aware Presets**: Automatically adjusts iterations and warmup cycles based on the selected object type.
-- **Lightweight Insights**: Provides a summary of object complexity (e.g., coverage counts, driver counts) immediately after preparation without dumping full data.
-
-### 12. Redis Session Backend (NEW v5.0)
-Optionally switch between SQL Server, H2, or Redis as your session store. This proves Fory's efficiency regardless of the storage medium.
+### 14. Reset Lab (NEW v5.0)
+One-click hard reset to clear all bench data, charts, and state for a fresh comparison run.
 
 ---
 
@@ -104,9 +119,13 @@ The laboratory is designed to simulate high-pressure production environments. He
 *   **The Proof**: Tests if the serializer can handle objects that point back to themselves without infinite loops or stack overflows.
 *   **Real-World Impact**: Most "fast" serializers (like JSON or older binary protocols) break on complex business objects. Proving Fory handles circular graphs confirms it is a **safe, drop-in replacement** for native Java serialization without requiring code changes.
 
-### **5. GC Pressure & JVM Longevity**
+### **3. GC Pressure & JVM Longevity**
 *   **The Proof**: Uses the **jvmImpact** metrics (GC Time/Memory Delta) to see how "stressed" the JVM becomes during high iteration bursts.
 *   **Real-World Impact**: High-performance apps often suffer from "tail latency" (P99) spikes caused by Garbage Collection pauses. Fory uses optimized buffer recycling to reduce temporary object creation, leading to a **flatter latency curve** and a more stable production environment.
+
+### **4. Storage Efficiency (Redis/SQL)**
+*   **The Proof**: Isolates I/O wait times in the **Redis/IO Impact** section.
+*   **Real-World Impact**: Serialization efficiency is the "multiplier" for storage costs. 50% smaller objects in Redis mean **50% lower cloud infrastructure costs** and faster network transit.
 
 ---
 
@@ -125,14 +144,13 @@ By default, the lab uses an in-memory **H2 Database** (via the `h2` profile). To
 
 ## 🔬 How to Run a Rigorous Test
 
-1.  **Prepare Environment**: Choose your **Object Size** (e.g., 500 KB) and toggle **Circular References**. Click **"Prepare Object"**.
-2.  **Heat the JIT**: Set **Warm-up Cycles** to `2000` and **Iterations** to `500`.
-3.  **Execute**: Click **"Run Comparison"**. 
+1.  **Prepare**: Choose **Test Object** and click **"Prepare Object"**.
+2.  **Heat the JIT**: Run a **JVM Comparison** first to ensure classes are loaded and C2 compilation has kicked in.
+3.  **Execute E2E**: Click **"⚡ Run End-to-End I/O Comparison"** to see side-by-side results for Memory, Redis, and JDBC.
 4.  **Analyze**: 
-    - Check the **jvmImpact** block in the Protocol Analysis window for GC/Memory data.
-    - Toggle **Log scale** on the Histogram to inspect performance consistency.
-    - Use **🔁 Re-run Same Config** to verify results without regenerating the object.
-5.  **Export**: Click **"Export CSV"** to save your evidence.
+    - Check the **Redis/IO Impact** for network savings.
+    - Inspect the **Protocol Analysis** JSON for machine-readable evidence.
+5.  **Export**: Click **"Generate Report"** for a printable summary.
 
 ---
 

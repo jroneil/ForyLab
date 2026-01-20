@@ -331,6 +331,9 @@
                                 CSV</button>
                             <button id="btnReport" class="btn-primary" onclick="generateReport()" disabled>📄 Generate
                                 Report</button>
+                            <button id="btnReset" class="btn-outline"
+                                style="border-color: var(--rose-500); color: var(--rose-500);" onclick="resetLab()">🗑️
+                                Reset Lab</button>
                         </div>
                     </section>
 
@@ -441,6 +444,31 @@
                                 style="margin-top: 1rem; font-size: 0.85rem; color: var(--text-muted); border-top: 1px solid var(--border); padding-top: 0.8rem; line-height: 1.4;">
                             </div>
                         </section>
+
+                        <section class="card" id="redisImpactCard" style="display: none;">
+                            <div class="status-header">
+                                <h2>Redis/IO Impact</h2>
+                                <span class="mode-badge"
+                                    style="background: rgba(16, 185, 129, 0.1); color: #10b981; font-size: 0.65rem;">Network
+                                    Efficiency</span>
+                            </div>
+                            <table class="results-table">
+                                <thead>
+                                    <tr>
+                                        <th>Mode</th>
+                                        <th>Payload Size</th>
+                                        <th>Serialization</th>
+                                        <th>I/O (Network)</th>
+                                        <th>Total E2E</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="redisImpactBody">
+                                </tbody>
+                            </table>
+                            <div id="redisImpactSummary"
+                                style="margin-top: 1rem; font-size: 0.85rem; color: var(--text-muted); border-top: 1px solid var(--border); padding-top: 0.8rem; line-height: 1.4;">
+                            </div>
+                        </section>
                 </div>
             </div>
         </div>
@@ -448,6 +476,21 @@
         <script>
             const btnStore = document.getElementById('btnStore');
             const btnRunBoth = document.getElementById('btnRunBoth');
+            const btnRunIO = document.getElementById('btnRunIO');
+            let availableBackends = ['memory']; // Default fallback
+
+            async function checkBackends() {
+                try {
+                    const res = await fetch('/api/compare/backends');
+                    if (res.ok) {
+                        availableBackends = await res.json();
+                        console.log("Active Backends:", availableBackends);
+                    }
+                } catch (e) {
+                    console.error("Failed to fetch backends", e);
+                }
+            }
+            checkBackends();
             const btnReRun = document.getElementById('btnReRun');
             const btnExport = document.getElementById('btnExport');
             const btnReport = document.getElementById('btnReport');
@@ -668,6 +711,39 @@
                 return data;
             }
 
+            function updateRedisImpact(redisJava, redisFory) {
+                const card = document.getElementById('redisImpactCard');
+                if (redisJava && redisFory) {
+                    card.style.display = 'block';
+                    const redisImpactBody = document.getElementById('redisImpactBody');
+                    const sizeReduct = ((1 - redisFory.payloadBytes / redisJava.payloadBytes) * 100).toFixed(1);
+                    const ioSpeedup = (redisJava.ioOnlyMs / Math.max(redisFory.ioOnlyMs, 0.001)).toFixed(1);
+
+                    redisImpactBody.innerHTML = `
+                        <tr>
+                            <td><span class="mode-badge badge-java">Java</span></td>
+                            <td>\${formatBytes(redisJava.payloadBytes)}</td>
+                            <td>\${redisJava.serializeOnlyMs.toFixed(3)} ms</td>
+                            <td>\${redisJava.ioOnlyMs.toFixed(3)} ms</td>
+                            <td><strong>\${redisJava.avgMs.toFixed(3)} ms</strong></td>
+                        </tr>
+                        <tr>
+                            <td><span class="mode-badge badge-fory">Fory</span></td>
+                            <td>\${formatBytes(redisFory.payloadBytes)}</td>
+                            <td>\${redisFory.serializeOnlyMs.toFixed(3)} ms</td>
+                            <td>\${redisFory.ioOnlyMs.toFixed(3)} ms</td>
+                            <td><strong>\${redisFory.avgMs.toFixed(3)} ms</strong></td>
+                        </tr>
+                    `;
+
+                    document.getElementById('redisImpactSummary').innerHTML =
+                        `Apache Fory yields a <strong>\${sizeReduct}%</strong> reduction in Redis memory footprint. ` +
+                        `Small packets result in \${ioSpeedup}x faster network transit times.`;
+                } else {
+                    card.style.display = 'none';
+                }
+            }
+
             btnRunBoth.addEventListener('click', async () => {
                 btnRunBoth.disabled = true;
                 btnRunBoth.innerText = '🏃 Testing...';
@@ -790,6 +866,14 @@
 
                 jvmImpactSummary.innerHTML = summary;
 
+                // --- Redis Impact (Auto-trigger if Redis is available) ---
+                if (availableBackends.includes('redis')) {
+                    const rJava = await runBench('java', 'redis');
+                    const rFory = await runBench('fory', 'redis');
+                    updateRedisImpact(rJava, rFory);
+                } else {
+                    updateRedisImpact(null, null);
+                }
 
                 lastBenchmarks.push(java, fory);
                 btnRunBoth.disabled = false;
@@ -798,13 +882,12 @@
                 btnReport.disabled = false;
             });
 
-            const btnRunIO = document.getElementById('btnRunIO');
             btnRunIO.addEventListener('click', async () => {
                 btnRunIO.disabled = true;
-                btnRunIO.innerHTML = '<span class="loader" style="display:inline-block"></span> Testing Backends...';
+                btnRunIO.innerHTML = '<span class="loader" style="display:inline-block"></span> Testing...';
 
-                // We'll run side-by-side: Memory, Redis, JDBC
-                const backends = ['memory', 'redis', 'jdbc'];
+                // Use detected active backends
+                const backends = availableBackends;
                 let allResults = [];
 
                 // Reset charts for clean run
@@ -830,16 +913,89 @@
                     histChart.update();
                 }
 
+                const op = document.getElementById('benchType').value;
+                const sizeKb = parseInt(document.getElementById('sizeKb').value);
+                const circular = document.getElementById('circularRefs').checked;
+                const iterations = parseInt(document.getElementById('iterations').value);
+                const warmup = parseInt(document.getElementById('warmup').value);
+                const objType = document.getElementById('objectType').value;
+
+                // Build Summary & Calculate Headline Stats
+                const summary = { [op]: {} };
+                let totalJavaMs = 0, totalForyMs = 0;
+                let totalJavaP95 = 0, totalForyP95 = 0;
+                let totalJavaSize = 0, totalForySize = 0;
+                let totalJavaTP = 0, totalForyTP = 0;
+                let count = 0;
+
+                backends.forEach(b => {
+                    const java = allResults.find(r => r.backend === b && r.mode === 'java');
+                    const fory = allResults.find(r => r.backend === b && r.mode === 'fory');
+                    if (java && fory) {
+                        const sAvg = java.avgMs / Math.max(fory.avgMs, 0.001);
+                        const sP95 = (java.p95Ms || java.avgMs) / Math.max((fory.p95Ms || fory.avgMs), 0.001);
+                        const pRatio = java.payloadBytes / Math.max(fory.payloadBytes, 1);
+
+                        summary[op][b] = {
+                            javaAvgMs: java.avgMs,
+                            foryAvgMs: fory.avgMs,
+                            speedupAvg: sAvg.toFixed(2) + "x",
+                            javaP95Ms: (java.p95Ms || java.avgMs),
+                            foryP95Ms: (fory.p95Ms || fory.avgMs),
+                            speedupP95: sP95.toFixed(2) + "x",
+                            payloadRatio: pRatio.toFixed(2) + "x"
+                        };
+
+                        totalJavaMs += java.avgMs; totalForyMs += fory.avgMs;
+                        totalJavaP95 += (java.p95Ms || java.avgMs); totalForyP95 += (fory.p95Ms || fory.avgMs);
+                        totalJavaSize += java.payloadBytes; totalForySize += fory.payloadBytes;
+                        totalJavaTP += java.throughput; totalForyTP += fory.throughput;
+                        count++;
+                    }
+                });
+
+                const headline = {
+                    title: "Multi-Backend Performance Analysis",
+                    avgSpeedup: (totalJavaMs / Math.max(totalForyMs, 0.001)).toFixed(2) + "x across all backends",
+                    p95Speedup: (totalJavaP95 / Math.max(totalForyP95, 0.001)).toFixed(2) + "x",
+                    payloadRatio: (totalJavaSize / Math.max(totalForySize, 1)).toFixed(2) + "x reduction",
+                    throughputDeltaOpsSec: "+" + Math.round(totalForyTP - totalJavaTP).toLocaleString() + " total ops/sec"
+                };
+
+                const redisEnabled = allResults.some(r => r.backend === 'redis');
+
                 jsonOutput.innerText = JSON.stringify({
                     outcome: "End-to-End I/O Comparison Finished",
-                    backends_tested: backends,
-                    note: "Check the table for Ser Phase vs I/O Phase breakdown.",
-                    results: allResults
+                    headline: headline,
+                    config: { sizeKb, circular, iterations, warmup, operation: op, objectType: objType },
+                    backends_tested: [...new Set(allResults.map(r => r.backend))],
+                    redis: {
+                        enabled: redisEnabled,
+                        connected: "unknown",
+                        keyPrefix: "forylab:bench",
+                        keySamples: ["forylab:bench:<sessionId>:java", "forylab:bench:<sessionId>:fory"],
+                        note: "Redis proof requires backend key listing; this UI shows expected key format."
+                    },
+                    summary: summary,
+                    results: allResults.sort((a, b) => {
+                        if (a.backend !== b.backend) return a.backend.localeCompare(b.backend);
+                        return a.mode.localeCompare(b.mode);
+                    })
                 }, null, 2);
+
+                const redisJava = allResults.find(r => r.backend === 'redis' && r.mode === 'java');
+                const redisFory = allResults.find(r => r.backend === 'redis' && r.mode === 'fory');
+                updateRedisImpact(redisJava, redisFory);
 
                 btnRunIO.disabled = false;
                 btnRunIO.innerText = '⚡ Run End-to-End I/O Comparison';
             });
+
+            function resetLab() {
+                if (confirm("Clear all data and reset the benchmark lab?")) {
+                    location.reload();
+                }
+            }
 
             async function reRun() {
                 btnRunBoth.click();
@@ -908,6 +1064,7 @@
             function clearResults() {
                 resultsBody.innerHTML = '';
                 jvmImpactBody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Run a comparison to populate...</td></tr>';
+                document.getElementById('redisImpactCard').style.display = 'none';
                 jvmImpactSummary.innerHTML = '';
                 summaryCard.style.display = 'none';
                 lastBenchmarks = [];

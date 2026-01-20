@@ -1,4 +1,6 @@
 spring:
+  autoconfigure:
+    exclude: [] # Re-enable Redis AutoConfiguration for this profile
   session:
     store-type: redis
     timeout: 30m

@@ -9,12 +9,16 @@ import com.example.demo.compare.serialization.GenericForyCodec;
 import com.example.demo.compare.serialization.JavaSer;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.connection.RedisConnection;
-import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
 import jakarta.annotation.PostConstruct;
-
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import org.springframework.data.redis.connection.RedisConnection;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.core.env.Profiles;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
 import java.util.*;
@@ -32,6 +36,9 @@ public class CompareApiController {
     @Autowired
     private GenericForyCodec genericForyCodec;
 
+    @Autowired
+    private Environment env;
+
     @Autowired(required = false)
     private JdbcTemplate jdbcTemplate;
 
@@ -39,25 +46,38 @@ public class CompareApiController {
     private RedisConnectionFactory redisConnectionFactory;
 
     private final Map<String, byte[]> inMemoryStore = new ConcurrentHashMap<>();
+    private final List<String> activeBackends = new ArrayList<>();
 
     @PostConstruct
     public void init() {
+        activeBackends.add("memory");
+
         if (jdbcTemplate != null) {
             try {
+                jdbcTemplate.execute("SELECT 1"); // Basic check
                 jdbcTemplate
                         .execute("CREATE TABLE IF NOT EXISTS FORY_BENCH_STORE (id VARCHAR(50) PRIMARY KEY, data BLOB)");
-                System.out.println("✅ JDBC Benchmark table initialized.");
+                activeBackends.add("jdbc");
+                System.out.println("✅ JDBC Backend Active (Benchmark table initialized)");
             } catch (Exception e) {
-                // Might fail on some DBs if syntax is different, but for H2/SQLServer it's
-                // usually fine
-                System.err.println("❌ Could not create FORY_BENCH_STORE table: " + e.getMessage());
+                System.err.println("❌ JDBC Backend Unavailable: " + e.getMessage());
             }
         }
-        if (redisConnectionFactory != null) {
-            System.out.println("✅ Redis Connection Factory detected.");
-        } else {
-            System.err.println("⚠️ Redis Connection Factory NOT found. Redis benchmarks will be skipped.");
+
+        if (redisConnectionFactory != null && env.acceptsProfiles(Profiles.of("redis-session"))) {
+            try (RedisConnection conn = redisConnectionFactory.getConnection()) {
+                conn.ping(); // Robust check
+                activeBackends.add("redis");
+                System.out.println("✅ Redis Backend Active");
+            } catch (Exception e) {
+                System.err.println("⚠️ Redis profile active but unreachable. Skipping Redis benchmarks.");
+            }
         }
+    }
+
+    @GetMapping("/backends")
+    public List<String> getBackends() {
+        return activeBackends;
     }
 
     @PostMapping("/store")
