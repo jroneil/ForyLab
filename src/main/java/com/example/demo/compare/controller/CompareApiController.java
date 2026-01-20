@@ -21,7 +21,8 @@ public class CompareApiController {
 
     private static final String QUOTE_JAVA_BYTES = "QUOTE_JAVA_BYTES";
     private static final String QUOTE_FORY_BYTES = "QUOTE_FORY_BYTES";
-    private static final String QUOTE_OBJECT = "QUOTE_OBJECT";
+    private static final String QUOTE_SIZE_KB = "QUOTE_SIZE_KB";
+    private static final String QUOTE_CIRCULAR = "QUOTE_CIRCULAR";
 
     @Autowired
     private GenericForyCodec genericForyCodec;
@@ -46,7 +47,8 @@ public class CompareApiController {
 
         session.setAttribute(QUOTE_JAVA_BYTES, javaBytes);
         session.setAttribute(QUOTE_FORY_BYTES, foryBytes);
-        session.setAttribute(QUOTE_OBJECT, obj);
+        session.setAttribute(QUOTE_SIZE_KB, sizeKb);
+        session.setAttribute(QUOTE_CIRCULAR, circular);
         session.setAttribute("OBJECT_TYPE", objectType);
         session.setAttribute("OBJECT_CLASS", obj.getClass().getSimpleName());
 
@@ -112,11 +114,19 @@ public class CompareApiController {
             throw new IllegalArgumentException("type must be 'serialize' or 'deserialize'");
         }
 
-        Object obj = session.getAttribute(QUOTE_OBJECT);
         byte[] storedData = (byte[]) session.getAttribute("java".equals(mode) ? QUOTE_JAVA_BYTES : QUOTE_FORY_BYTES);
+        Integer sizeKb = (Integer) session.getAttribute(QUOTE_SIZE_KB);
+        Boolean circular = (Boolean) session.getAttribute(QUOTE_CIRCULAR);
+        String objectType = (String) session.getAttribute("OBJECT_TYPE");
 
-        if (obj == null || storedData == null) {
+        if (storedData == null || sizeKb == null || circular == null) {
             throw new RuntimeException("No data in session. Please 'Store' first.");
+        }
+
+        // Regenerate object for serialization benchmark if needed
+        Object obj = null;
+        if ("serialize".equals(type)) {
+            obj = createObjectByType(objectType, sizeKb, circular);
         }
 
         int warmup = request.resolvedWarmup();
@@ -231,6 +241,16 @@ public class CompareApiController {
                 .gcTimeMsDelta(gcTimeAfter - gcTimeBefore)
                 .objectType((String) session.getAttribute("OBJECT_TYPE"))
                 .build();
+    }
+
+    private Object createObjectByType(String objectType, int sizeKb, boolean circular) {
+        if ("policy".equalsIgnoreCase(objectType)) {
+            return PolicyFactory.createPolicy(sizeKb, circular);
+        } else if ("collections".equalsIgnoreCase(objectType)) {
+            return CollectionsFactory.createCollectionsBlob(sizeKb, circular);
+        } else {
+            return QuoteFactory.createLargeQuote(sizeKb, circular);
+        }
     }
 
     private static double nanosToMs(long nanos) {

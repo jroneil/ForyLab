@@ -1,10 +1,10 @@
-# Serialization Lab v4.2: Rigorous Performance Proof
+# Serialization Lab v5.0: Rigorous Performance Proof
 
-![Serialization Lab v4.2 Dashboard](lab.png)
+![Serialization Lab v5.0 Dashboard](lab.png)
 
-This project is a high-performance benchmark laboratory designed to compare **Java Native Serialization** with **Apache Fory (formerly Apache Fury)** in a Spring Session (JDBC) environment. 
+This project is a high-performance benchmark laboratory designed to compare **Java Native Serialization** with **Apache Fory (formerly Apache Fury)** in various Spring Session environments (JDBC, Redis, or In-Memory). 
 
-Version 4.1 introduces multi-object type support, allowing you to benchmark diverse data structures from simple quotes to deeply nested policies and map-heavy collections.
+Version 5.0 introduces optional **Redis-backed sessions** and a profile-driven backend toggle.
 
 ---
 
@@ -29,9 +29,9 @@ mvn spring-boot:run
 
 ---
 
-## 🎮 Rigorous Proof Features (v4.2)
+## 🎮 Rigorous Proof Features (v5.0)
 
-The laboratory now includes eleven critical areas of proof:
+The laboratory now includes twelve critical areas of proof:
 
 ### 1. JVM Impact Card (NEW v3.3)
 A dedicated UI visualization for system overhead. The dashboard now features a real-time table summarizing:
@@ -75,9 +75,12 @@ Choose between different object schemas to see how serialization scales:
 - **Insurance Policy**: Deeply nested structure with various primitives and collections.
 - **Collections Blob**: Map-heavy and list-heavy payload to test generic collection overhead.
 
-### 11. Recommended Defaults & Object Summary (NEW v4.2)
+### 11. Recommended Defaults & Object Summary
 - **Context-Aware Presets**: Automatically adjusts iterations and warmup cycles based on the selected object type.
 - **Lightweight Insights**: Provides a summary of object complexity (e.g., coverage counts, driver counts) immediately after preparation without dumping full data.
+
+### 12. Redis Session Backend (NEW v5.0)
+Optionally switch between SQL Server, H2, or Redis as your session store. This proves Fory's efficiency regardless of the storage medium.
 
 ---
 
@@ -137,8 +140,36 @@ By default, the lab uses an in-memory **H2 Database** (via the `h2` profile). To
 
 - `ForyConfig.java`: Configures the `ThreadSafeFory` bean (v0.14.1+).
 - `QuoteFactory.java`: Industrial domain model generator supporting circular graphs.
-- `CompareApiController.java`: High-concurrency benchmark engine with JVM metric capture.
-- `compare.jsp`: Professional dashboard with Chart.js analytics and v3.2 UX polish.
+- `CompareApiController.java`: High-concurrency benchmark engine with JVM metric capture and metadata-driven regression.
+- `compare.jsp`: Professional dashboard with Chart.js analytics and v5.0 UX polish.
+
+---
+
+## 🔴 Redis Session Backend (Optional)
+
+The app supports **Redis** as a session store via Spring Session.
+
+### Running with Redis Sessions
+
+1. **Start Redis**:
+   ```bash
+   docker run --name redis -p 6379:6379 redis:7-alpine
+   ```
+
+2. **Run with Redis Profile**:
+   ```powershell
+   # Use h2 + redis-session
+   mvn spring-boot:run "-Dspring-boot.run.profiles=h2,redis-session"
+   ```
+
+### Profile Combinations
+
+| Profiles | Database | Session Store |
+|----------|----------|---------------|
+| `h2` | H2 (in-memory) | Servlet Container |
+| `sqlserver` | SQL Server | JDBC Session |
+| `h2,redis-session` | H2 | Redis |
+| `sqlserver,redis-session` | SQL Server | Redis |
 
 ## 📝 Troubleshooting
 

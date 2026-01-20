@@ -5,7 +5,7 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Serialization Lab v4.2 | Rigorous Performance Proof</title>
+        <title>Serialization Lab v5.0 | Rigorous Performance Proof</title>
         <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
         <style>
             :root {
@@ -263,8 +263,11 @@
     <body>
         <div class="container">
             <header>
-                <h1>Serialization Lab v4.2</h1>
+                <h1>Serialization Lab v5.0</h1>
                 <p class="subtitle">Rigorous Proof Benchmarking | JIT | JVM Impact | Payload Size</p>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;">
+                    Session Backend: <strong style="color: var(--primary);">${sessionBackend}</strong>
+                </p>
                 <!-- Professional disclaimer: signals observational context without distracting from results -->
                 <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.4rem; opacity: 0.8;">
                     Observed results under specific test conditions &mdash; not general performance claims.
