@@ -318,7 +318,13 @@
                                 <span id="storeLoader" class="loader"></span>
                                 Prepare Object
                             </button>
-                            <button id="btnRunBoth" class="btn-outline" disabled>Run Comparison</button>
+                            <button id="btnRunBoth" class="btn-outline" disabled title="Standard JVM Benchmark">Run JVM
+                                Comparison</button>
+                            <button id="btnRunIO" class="btn-success" disabled>⚡ Run End-to-End I/O Comparison</button>
+                            <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.2rem;">
+                                💡 <em>"Measures serialize+store+load; not a full Spring Session backend
+                                    benchmark."</em>
+                            </p>
                             <button id="btnReRun" class="btn-outline" onclick="reRun()" disabled>🔁 Re-run Same
                                 Config</button>
                             <button id="btnExport" class="btn-outline" onclick="exportToCSV()" disabled>Export
@@ -376,17 +382,13 @@
                                 <thead>
                                     <tr>
                                         <th>Mode</th>
-                                        <th>Object</th>
+                                        <th>Storage</th>
                                         <th>Type</th>
                                         <th>Size</th>
-                                        <th>Circ?</th>
-                                        <th>Iter</th>
-                                        <th>Warm</th>
                                         <th>Avg (ms)</th>
-                                        <th>P50</th>
+                                        <th>Ser Phase</th>
+                                        <th>I/O Phase</th>
                                         <th>P95</th>
-                                        <th>P99</th>
-                                        <th>StdDev</th>
                                         <th>Throughput</th>
                                     </tr>
                                 </thead>
@@ -500,14 +502,34 @@
                     type: 'bar',
                     data: {
                         labels: ['Java Native', 'Apache Fory'],
-                        datasets: [{
-                            data: [0, 0],
-                            backgroundColor: ['rgba(245, 158, 11, 0.6)', 'rgba(6, 182, 212, 0.6)'],
-                            borderColor: ['#f59e0b', '#06b6d4'],
-                            borderWidth: 1
-                        }]
+                        datasets: [
+                            {
+                                label: 'Memory',
+                                data: [0, 0],
+                                backgroundColor: 'rgba(99, 102, 241, 0.6)', // Indigo
+                                borderColor: '#6366f1',
+                                borderWidth: 1
+                            },
+                            {
+                                label: 'Redis',
+                                data: [0, 0],
+                                backgroundColor: 'rgba(16, 185, 129, 0.6)', // Emerald
+                                borderColor: '#10b981',
+                                borderWidth: 1
+                            },
+                            {
+                                label: 'JDBC',
+                                data: [0, 0],
+                                backgroundColor: 'rgba(244, 63, 94, 0.6)', // Rose
+                                borderColor: '#f43f5e',
+                                borderWidth: 1
+                            }
+                        ]
                     },
-                    options: chartOptions
+                    options: {
+                        ...chartOptions,
+                        plugins: { legend: { display: true, labels: { color: '#fff' } } }
+                    }
                 });
 
                 sizeChart = new Chart(document.getElementById('sizeChart'), {
@@ -538,13 +560,17 @@
                     data: {
                         labels: [],
                         datasets: [
-                            { label: 'Java', data: [], borderColor: '#f59e0b', tension: 0.4 },
-                            { label: 'Fory', data: [], borderColor: '#06b6d4', tension: 0.4 }
+                            { label: 'Mem-Java', data: [], borderColor: '#f59e0b', tension: 0.4, borderDash: [5, 5] },
+                            { label: 'Mem-Fory', data: [], borderColor: '#06b6d4', tension: 0.4, borderDash: [5, 5] },
+                            { label: 'Redis-Java', data: [], borderColor: '#f59e0b', tension: 0.4 },
+                            { label: 'Redis-Fory', data: [], borderColor: '#06b6d4', tension: 0.4 },
+                            { label: 'JDBC-Java', data: [], borderColor: '#ef4444', tension: 0.4 },
+                            { label: 'JDBC-Fory', data: [], borderColor: '#10b981', tension: 0.4 }
                         ]
                     },
                     options: {
                         ...chartOptions,
-                        plugins: { legend: { display: true, labels: { color: '#fff' } } },
+                        plugins: { legend: { display: true, labels: { color: '#fff', boxWidth: 10, font: { size: 10 } } } },
                         scales: { y: { beginAtZero: true }, x: { display: false } }
                     }
                 });
@@ -596,6 +622,7 @@
                     }, null, 2);
 
                     btnRunBoth.disabled = false;
+                    btnRunIO.disabled = false;
                     btnExport.disabled = false;
                 } catch (e) {
                     jsonOutput.innerText = "Error: " + e.message;
@@ -606,44 +633,36 @@
             });
 
 
-            async function runBench(mode) {
+            async function runBench(mode, backend = null) {
                 const iterations = parseInt(document.getElementById('iterations').value, 10);
                 const warmup = parseInt(document.getElementById('warmup').value, 10);
                 const type = document.getElementById('benchType').value;
-
                 const circular = document.getElementById('circularRefs').checked;
 
                 const res = await fetch('/api/compare/bench', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        iterations,
-                        warmup,
-                        circular,
-                        mode, type
+                        iterations, warmup, circular, mode, type, backend
                     })
                 });
                 const data = await res.json();
 
                 const row = document.createElement('tr');
                 const badgeClass = data.mode === 'java' ? 'badge-java' : 'badge-fory';
-                const objLabel = data.objectType ? data.objectType.charAt(0).toUpperCase() + data.objectType.slice(1) : 'Unknown';
+                const storageLabel = data.backend ? data.backend.charAt(0).toUpperCase() + data.backend.slice(1) : 'JVM (Memory)';
 
                 row.innerHTML = `
                     <td><span class="mode-badge \${badgeClass}">\${data.mode}</span></td>
-                    <td style="font-size: 0.75rem; color: var(--text-muted)">\${objLabel}</td>
+                    <td style="font-size: 0.75rem; color: var(--text-muted)">\${storageLabel}</td>
                     <td>\${data.type === 'serialize' ? 'Write' : 'Read'}</td>
                     <td>\${formatBytes(data.payloadBytes)}</td>
-                    <td>\${data.circular ? 'Yes' : 'No'}</td>
-                    <td>\${data.iterations}</td>
-                    <td>\${data.warmup}</td>
                     <td><strong>\${data.avgMs.toFixed(3)}</strong></td>
-                    <td>\${(data.p50Ms ?? 0).toFixed(3)}</td>
+                    <td style="color: #6366f1">\${data.serializeOnlyMs.toFixed(3)}</td>
+                    <td style="color: #10b981">\${data.ioOnlyMs.toFixed(3)}</td>
                     <td>\${(data.p95Ms ?? 0).toFixed(3)}</td>
-                    <td>\${(data.p99Ms ?? 0).toFixed(3)}</td>
-                    <td>\${(data.stddevMs ?? 0).toFixed(3)}</td>
                     <td>\${Math.round(data.throughput).toLocaleString()}</td>
-                    `;
+                `;
 
                 resultsBody.prepend(row);
                 return data;
@@ -656,12 +675,15 @@
                 const java = await runBench('java');
                 const fory = await runBench('fory');
 
+                // JVM only Comparison: Reset and show in Memory slot
+                perfChart.data.datasets.forEach(d => d.data = [0, 0]);
                 perfChart.data.datasets[0].data = [java.avgMs, fory.avgMs];
                 perfChart.update();
 
-                // Histogram Update (use first 50 samples for clarity)
+                // Histogram Update
                 const count = Math.min(java.samples.length, 50);
                 histChart.data.labels = Array.from({ length: count }, (_, i) => i);
+                histChart.data.datasets.forEach(d => d.data = []); // clear all
                 histChart.data.datasets[0].data = java.samples.slice(0, count);
                 histChart.data.datasets[1].data = fory.samples.slice(0, count);
                 histChart.update();
@@ -771,9 +793,52 @@
 
                 lastBenchmarks.push(java, fory);
                 btnRunBoth.disabled = false;
-                btnRunBoth.innerText = 'Run Comparison';
+                btnRunBoth.innerText = 'Run JVM Comparison';
                 btnReRun.disabled = false;
                 btnReport.disabled = false;
+            });
+
+            const btnRunIO = document.getElementById('btnRunIO');
+            btnRunIO.addEventListener('click', async () => {
+                btnRunIO.disabled = true;
+                btnRunIO.innerHTML = '<span class="loader" style="display:inline-block"></span> Testing Backends...';
+
+                // We'll run side-by-side: Memory, Redis, JDBC
+                const backends = ['memory', 'redis', 'jdbc'];
+                let allResults = [];
+
+                // Reset charts for clean run
+                perfChart.data.datasets.forEach(d => d.data = [0, 0]);
+                histChart.data.datasets.forEach(d => d.data = []);
+
+                for (let i = 0; i < backends.length; i++) {
+                    const b = backends[i];
+                    const java = await runBench('java', b);
+                    const fory = await runBench('fory', b);
+                    allResults.push(java, fory);
+
+                    // Update Latency Chart: Protocol is index, Backend is dataset
+                    perfChart.data.datasets[i].data[0] = java.avgMs;
+                    perfChart.data.datasets[i].data[1] = fory.avgMs;
+                    perfChart.update();
+
+                    // Update Histogram (use first 50 samples)
+                    const count = Math.min(java.samples.length, 50);
+                    histChart.data.labels = Array.from({ length: count }, (_, idx) => idx);
+                    histChart.data.datasets[i * 2].data = java.samples.slice(0, count);
+                    histChart.data.datasets[i * 2 + 1].data = fory.samples.slice(0, count);
+                    histChart.update();
+                }
+
+                jsonOutput.innerText = JSON.stringify({
+                    outcome: "End-to-End I/O Comparison Finished",
+                    backends_tested: backends,
+                    note: "Check the table for Ser Phase vs I/O Phase breakdown.",
+                    results: allResults
+                }, null, 2);
+
+                btnRunIO.disabled = false;
+                btnRunIO.innerText = '⚡ Run End-to-End I/O Comparison';
             });
 
             async function reRun() {

@@ -9,11 +9,16 @@ import com.example.demo.compare.serialization.GenericForyCodec;
 import com.example.demo.compare.serialization.JavaSer;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.connection.RedisConnection;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
+import jakarta.annotation.PostConstruct;
 
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
 @RequestMapping("/api/compare")
@@ -26,6 +31,34 @@ public class CompareApiController {
 
     @Autowired
     private GenericForyCodec genericForyCodec;
+
+    @Autowired(required = false)
+    private JdbcTemplate jdbcTemplate;
+
+    @Autowired(required = false)
+    private RedisConnectionFactory redisConnectionFactory;
+
+    private final Map<String, byte[]> inMemoryStore = new ConcurrentHashMap<>();
+
+    @PostConstruct
+    public void init() {
+        if (jdbcTemplate != null) {
+            try {
+                jdbcTemplate
+                        .execute("CREATE TABLE IF NOT EXISTS FORY_BENCH_STORE (id VARCHAR(50) PRIMARY KEY, data BLOB)");
+                System.out.println("✅ JDBC Benchmark table initialized.");
+            } catch (Exception e) {
+                // Might fail on some DBs if syntax is different, but for H2/SQLServer it's
+                // usually fine
+                System.err.println("❌ Could not create FORY_BENCH_STORE table: " + e.getMessage());
+            }
+        }
+        if (redisConnectionFactory != null) {
+            System.out.println("✅ Redis Connection Factory detected.");
+        } else {
+            System.err.println("⚠️ Redis Connection Factory NOT found. Redis benchmarks will be skipped.");
+        }
+    }
 
     @PostMapping("/store")
     public StoreResponse store(@RequestParam(defaultValue = "100") int sizeKb,
@@ -123,6 +156,13 @@ public class CompareApiController {
             throw new RuntimeException("No data in session. Please 'Store' first.");
         }
 
+        String backend = request.getBackend(); // memory, jdbc, redis
+
+        // Prime the backend for deserialization benchmarks if needed
+        if ("deserialize".equals(type) && backend != null) {
+            performStore(backend, storedData);
+        }
+
         // Regenerate object for serialization benchmark if needed
         Object obj = null;
         if ("serialize".equals(type)) {
@@ -132,25 +172,31 @@ public class CompareApiController {
         int warmup = request.resolvedWarmup();
         int iterations = request.resolvedIterations();
 
-        // Warmup phase (do not record)
+        // Warmup phase
         for (int i = 0; i < warmup; i++) {
             if ("serialize".equals(type)) {
-                if ("java".equals(mode)) {
-                    JavaSer.serialize(obj);
-                } else {
-                    genericForyCodec.serialize(obj);
+                byte[] bytes = "java".equals(mode) ? JavaSer.serialize(obj) : genericForyCodec.serialize(obj);
+                if (backend != null) {
+                    performStore(backend, bytes);
                 }
             } else {
-                if ("java".equals(mode)) {
-                    JavaSer.deserialize(storedData);
-                } else {
-                    genericForyCodec.deserialize(storedData);
+                byte[] dataToUse = storedData;
+                if (backend != null) {
+                    dataToUse = performLoad(backend);
+                }
+                // Skip if no data available (backend not primed yet)
+                if (dataToUse != null && dataToUse.length > 0) {
+                    if ("java".equals(mode)) {
+                        JavaSer.deserialize(dataToUse);
+                    } else {
+                        genericForyCodec.deserialize(dataToUse);
+                    }
                 }
             }
         }
 
         // Measure GC and Memory before
-        System.gc(); // Suggest GC to have a cleaner baseline
+        System.gc();
         Runtime runtime = Runtime.getRuntime();
         long memBefore = runtime.totalMemory() - runtime.freeMemory();
         long gcCountBefore = getGcCount();
@@ -159,28 +205,50 @@ public class CompareApiController {
         // Measurement phase
         List<Long> times = new ArrayList<>(iterations);
         List<Double> msSamples = new ArrayList<>(iterations);
+        long totalSerializeNanos = 0;
+        long totalIoNanos = 0;
 
-        // payloadBytes:
-        // - deserialize => size of stored session bytes
-        // - serialize => size of bytes produced by the serializer (measured)
         int payloadBytes = storedData.length;
         byte[] lastSerialized = null;
 
         long totalMeasureStart = System.nanoTime();
         for (int i = 0; i < iterations; i++) {
             long start = System.nanoTime();
+            long serNanos = 0;
+            long ioNanos = 0;
 
             if ("serialize".equals(type)) {
-                if ("java".equals(mode)) {
-                    lastSerialized = JavaSer.serialize(obj);
-                } else {
-                    lastSerialized = genericForyCodec.serialize(obj);
+                long s1 = System.nanoTime();
+                byte[] bytes = "java".equals(mode) ? JavaSer.serialize(obj) : genericForyCodec.serialize(obj);
+                long s2 = System.nanoTime();
+                serNanos = s2 - s1;
+                lastSerialized = bytes;
+
+                if (backend != null) {
+                    long i1 = System.nanoTime();
+                    performStore(backend, bytes);
+                    long i2 = System.nanoTime();
+                    ioNanos = i2 - i1;
                 }
             } else {
-                if ("java".equals(mode)) {
-                    JavaSer.deserialize(storedData);
-                } else {
-                    genericForyCodec.deserialize(storedData);
+                byte[] dataToUse = storedData;
+                if (backend != null) {
+                    long i1 = System.nanoTime();
+                    dataToUse = performLoad(backend);
+                    long i2 = System.nanoTime();
+                    ioNanos = i2 - i1;
+                }
+
+                // Skip if no data available
+                if (dataToUse != null && dataToUse.length > 0) {
+                    long s1 = System.nanoTime();
+                    if ("java".equals(mode)) {
+                        JavaSer.deserialize(dataToUse);
+                    } else {
+                        genericForyCodec.deserialize(dataToUse);
+                    }
+                    long s2 = System.nanoTime();
+                    serNanos = s2 - s1;
                 }
             }
 
@@ -189,6 +257,8 @@ public class CompareApiController {
 
             times.add(duration);
             msSamples.add(nanosToMs(duration));
+            totalSerializeNanos += serNanos;
+            totalIoNanos += ioNanos;
         }
         long totalMeasureEnd = System.nanoTime();
 
@@ -240,7 +310,57 @@ public class CompareApiController {
                 .gcCollectionsDelta(gcCountAfter - gcCountBefore)
                 .gcTimeMsDelta(gcTimeAfter - gcTimeBefore)
                 .objectType((String) session.getAttribute("OBJECT_TYPE"))
+                .serializeOnlyMs(nanosToMs(totalSerializeNanos / iterations))
+                .ioOnlyMs(nanosToMs(totalIoNanos / iterations))
+                .backend(backend)
                 .build();
+    }
+
+    private void performStore(String backend, byte[] data) {
+        if ("memory".equalsIgnoreCase(backend)) {
+            inMemoryStore.put("bench-key", data);
+        } else if ("jdbc".equalsIgnoreCase(backend)) {
+            if (jdbcTemplate != null) {
+                jdbcTemplate.update("MERGE INTO FORY_BENCH_STORE (id, data) KEY(id) VALUES (?, ?)", "bench-key", data);
+            }
+        } else if ("redis".equalsIgnoreCase(backend)) {
+            if (redisConnectionFactory != null) {
+                try (RedisConnection conn = redisConnectionFactory.getConnection()) {
+                    conn.set("fory-bench-key".getBytes(), data);
+                } catch (Exception e) {
+                    System.err.println("Redis Store Error: " + e.getMessage());
+                }
+            }
+        }
+    }
+
+    private byte[] performLoad(String backend) {
+        if ("memory".equalsIgnoreCase(backend)) {
+            byte[] data = inMemoryStore.get("bench-key");
+            return data != null ? data : new byte[0];
+        } else if ("jdbc".equalsIgnoreCase(backend)) {
+            if (jdbcTemplate != null) {
+                try {
+                    byte[] data = jdbcTemplate.queryForObject("SELECT data FROM FORY_BENCH_STORE WHERE id = ?",
+                            byte[].class, "bench-key");
+                    return data != null ? data : new byte[0];
+                } catch (Exception e) {
+                    // Row might not exist yet
+                    return new byte[0];
+                }
+            }
+        } else if ("redis".equalsIgnoreCase(backend)) {
+            if (redisConnectionFactory != null) {
+                try (RedisConnection conn = redisConnectionFactory.getConnection()) {
+                    byte[] data = conn.get("fory-bench-key".getBytes());
+                    return data != null ? data : new byte[0];
+                } catch (Exception e) {
+                    System.err.println("Redis Load Error: " + e.getMessage());
+                    return new byte[0];
+                }
+            }
+        }
+        return new byte[0];
     }
 
     private Object createObjectByType(String objectType, int sizeKb, boolean circular) {

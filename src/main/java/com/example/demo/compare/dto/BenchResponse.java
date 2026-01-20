@@ -35,4 +35,9 @@ public class BenchResponse {
     private long gcCollectionsDelta;
     private long gcTimeMsDelta;
     private String objectType;
+
+    // E2E I/O Breakdown (v5.0)
+    private double serializeOnlyMs;
+    private double ioOnlyMs;
+    private String backend; // memory, jdbc, redis
 }

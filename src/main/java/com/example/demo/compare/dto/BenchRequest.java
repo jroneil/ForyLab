@@ -11,6 +11,7 @@ public class BenchRequest {
     private String mode; // "java" or "fory"
     private String type; // "serialize" or "deserialize"
     private boolean circular;
+    private String backend; // "memory", "jdbc", "redis"
 
     // ===== OPTIONAL HELPERS (NON-BREAKING) =====
 
