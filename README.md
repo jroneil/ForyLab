@@ -4,7 +4,11 @@ This project is a high-performance benchmark laboratory designed to compare **Ja
 Version 5.0 introduces **End-to-End I/O Comparison** across multiple backends and deep **Network Efficiency** analytics.
 ![Serialization Lab v5.0 Dashboard](lab.png)
 
+## Why this exists
 
+Serialization is often blamed for performance problems without evidence.
+This lab exists to measure, compare, and understand the real impact of
+different Java serialization approaches before prematurely optimizing systems.
 
 ---
 
