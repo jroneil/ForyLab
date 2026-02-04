@@ -1,10 +1,10 @@
 # Serialization Lab v5.0: Rigorous Performance Proof
-
-![Serialization Lab v5.0 Dashboard](lab.png)
-
 This project is a high-performance benchmark laboratory designed to compare **Java Native Serialization** with **Apache Fory** in various Spring Session environments (JDBC, Redis, or In-Memory). 
 
 Version 5.0 introduces **End-to-End I/O Comparison** across multiple backends and deep **Network Efficiency** analytics.
+![Serialization Lab v5.0 Dashboard](lab.png)
+
+
 
 ---
 
